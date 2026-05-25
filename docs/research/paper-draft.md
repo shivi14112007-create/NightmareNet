@@ -23,10 +23,11 @@ augmentation), **Nightmare** (curriculum adversarial hardening), and
 student re-enters the cycle, enabling iterative self-improvement without manual
 intervention. On SST-2 sentiment classification with `distilbert-base-uncased`
 fine-tuned on a 500-sample subset, our Wake → Nightmare half-cycle delivers a
-**+14.49% relative improvement in adversarial accuracy** (averaged across dream
+**+13.64% relative improvement in adversarial accuracy** (averaged across dream
 and nightmare distortions at strengths 0.1–0.9) over an equivalent
-wake-only baseline, *with no loss of clean accuracy*. This single-seed,
-consumer-GPU result lies within the 10–30% target band of our specification and
+wake-only baseline, *together with* a +4.0-point absolute improvement in clean
+accuracy (0.745 → 0.785). This single-seed, consumer-GPU result lies within
+the 10–30% target band of our specification and
 suggests that *structural training schedules* — not just stronger objectives —
 are a viable route to deployable adversarial robustness.
 
@@ -283,31 +284,30 @@ The full result JSON lives at [`results/gpu_benchmark.json`](../../results/gpu_b
 
 | Metric | Baseline (wake-only) | NightmareNet (wake + nightmare) | Δ |
 |--------|---------------------:|--------------------------------:|---:|
-| Clean accuracy | 0.7450 | **0.7500** | +0.0050 |
-| Avg distorted accuracy | 0.5830 | **0.6675** | **+0.0845** |
-| Robustness drop \(\Delta_{\text{rob}}\) | 0.1620 | **0.0825** | −0.0795 |
-| **Relative robustness improvement** | — | — | **+14.49%** |
+| Clean accuracy | 0.7450 | **0.7850** | **+0.0400** |
+| Avg distorted accuracy | 0.5830 | **0.6625** | **+0.0795** |
+| Robustness drop \(\Delta_{\text{rob}}\) | 0.1620 | **0.1225** | −0.0395 |
+| **Relative robustness improvement** | — | — | **+13.64%** |
 
-NightmareNet does **not** sacrifice clean accuracy for robustness — clean
-accuracy moves marginally upward — yet *halves the robustness drop* (0.162 →
-0.083) and *adds 8.45 absolute points* to average distorted accuracy. The
-relative robustness improvement (14.49%) sits comfortably in the 10–30%
-target band of our specification.
+NightmareNet *improves both clean and distorted accuracy simultaneously* — by
++4.0 and +7.95 absolute percentage points respectively. The robustness drop
+shrinks by a quarter (0.162 → 0.123) and the relative robustness improvement
+(+13.64%) sits comfortably in the 10–30% target band of our specification.
 
 ### 5.2 Per-strength breakdown
 
 | Strength | Baseline Dream | NN Dream | Δ | Baseline Nightmare | NN Nightmare | Δ |
 |---------:|---------------:|---------:|--:|-------------------:|-------------:|--:|
-| 0.1 | 0.700 | 0.760 | +0.060 | 0.710 | 0.765 | +0.055 |
-| 0.3 | 0.665 | 0.735 | +0.070 | 0.655 | 0.745 | +0.090 |
-| 0.5 | 0.580 | 0.660 | +0.080 | 0.585 | 0.660 | +0.075 |
-| 0.7 | 0.480 | 0.570 | +0.090 | 0.480 | 0.570 | +0.090 |
-| 0.9 | 0.490 | 0.585 | +0.095 | 0.485 | 0.625 | +0.140 |
+| 0.1 | 0.700 | 0.765 | +0.065 | 0.710 | 0.770 | +0.060 |
+| 0.3 | 0.665 | 0.725 | +0.060 | 0.655 | 0.735 | +0.080 |
+| 0.5 | 0.580 | 0.645 | +0.065 | 0.585 | 0.630 | +0.045 |
+| 0.7 | 0.480 | 0.565 | +0.085 | 0.480 | 0.560 | +0.080 |
+| 0.9 | 0.490 | 0.590 | +0.100 | 0.485 | 0.640 | +0.155 |
 
 NightmareNet wins at every strength level for both distortion families.
 Critically, improvement *increases with distortion strength* — adversarial
 training is most valuable exactly where baselines collapse (strength 0.7–0.9).
-The gain on the hardest condition (nightmare @ s = 0.9) is +14.0 absolute
+The gain on the hardest condition (nightmare @ s = 0.9) is +15.5 absolute
 percentage points.
 
 ### 5.3 Training cost
@@ -315,10 +315,15 @@ percentage points.
 | Regime | Train time | Train epochs | Cycles |
 |--------|-----------:|-------------:|-------:|
 | Baseline | 4.1 s | 1 | 0 |
-| NightmareNet (wake + nightmare) | 7.3 s | 2 | 1 (partial) |
+| NightmareNet (wake + nightmare, full distortion) | 483.6 s | 2 | 1 (partial) |
 
-The +14.49% robustness gain costs *< 2× the baseline wake-only budget* on this
-500-sample setup. The Dream and Compress phases are not yet evaluated in v1
+The +13.64% robustness gain comes with a heavier compute cost in this
+configuration because the nightmare epoch now invokes the full distortion
+chain (rule-based + learned-attention). The cached `LearnedAdversarialGenerator`
+amortizes most of the model-load cost; runtime is dominated by per-example
+attention extraction. Disabling the learned path (`learned: 0.0`) recovers a
+~70x faster benchmark at the cost of ~1 percentage point of relative
+improvement (the earlier +14.49% configuration). The Dream and Compress phases are not yet evaluated in v1
 (see §6); the full 4-phase cycle is implemented in `nightmarenet.pipeline.Pipeline`
 and reachable via `nightmarenet train --config configs/benchmark_sst2_gpu.yaml`.
 
