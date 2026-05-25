@@ -52,3 +52,5 @@ htmlcov/
 results/
 
 .venv312-install.log
+
+gpu-bench.log
