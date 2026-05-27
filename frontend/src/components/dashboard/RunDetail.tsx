@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Panel } from "./Panel";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Progress } from "@/components/ui/Progress";
+import { useToast } from "@/components/ui/Toast";
 import {
   IconActivity,
-  IconCheck,
   IconClock,
   IconDownload,
   IconRunning,
@@ -16,6 +16,71 @@ import {
 } from "./icons";
 
 type PhaseTab = "wake" | "dream" | "nightmare" | "compress";
+
+interface RunConfig {
+  modelName: string;
+  nightmareStrength: number;
+  dreamStrength: number;
+}
+
+interface MutationPreset {
+  id: string;
+  label: string;
+  detail: string;
+  mutate: (cfg: RunConfig) => RunConfig;
+  // Inline diff description rendered next to each preset.
+  diff: (cfg: RunConfig) => string;
+}
+
+const BASE_CONFIG: RunConfig = {
+  modelName: "DistilBERT",
+  nightmareStrength: 0.5,
+  dreamStrength: 0.25,
+};
+
+const PRESETS: MutationPreset[] = [
+  {
+    id: "same",
+    label: "Same config",
+    detail: "Re-runs the exact configuration",
+    mutate: (cfg) => ({ ...cfg }),
+    diff: () => "no changes",
+  },
+  {
+    id: "up",
+    label: "Strength × 1.2",
+    detail: "Bumps nightmare strength by 20%",
+    mutate: (cfg) => ({
+      ...cfg,
+      nightmareStrength: Math.min(1, Number((cfg.nightmareStrength * 1.2).toFixed(2))),
+    }),
+    diff: (cfg) =>
+      `nightmare_strength: ${cfg.nightmareStrength.toFixed(2)} → ${Math.min(
+        1,
+        Number((cfg.nightmareStrength * 1.2).toFixed(2))
+      ).toFixed(2)}`,
+  },
+  {
+    id: "down",
+    label: "Strength × 0.8",
+    detail: "Drops nightmare strength by 20%",
+    mutate: (cfg) => ({
+      ...cfg,
+      nightmareStrength: Number((cfg.nightmareStrength * 0.8).toFixed(2)),
+    }),
+    diff: (cfg) =>
+      `nightmare_strength: ${cfg.nightmareStrength.toFixed(2)} → ${(
+        cfg.nightmareStrength * 0.8
+      ).toFixed(2)}`,
+  },
+  {
+    id: "gpt2",
+    label: "Switch to GPT-2",
+    detail: "Same training schedule, different backbone",
+    mutate: (cfg) => ({ ...cfg, modelName: "GPT-2" }),
+    diff: (cfg) => `model_name: ${cfg.modelName} → GPT-2`,
+  },
+];
 
 const TABS: { key: PhaseTab; label: string; tone: "neural" | "dream" | "nightmare" | "warning" }[] = [
   { key: "wake", label: "Wake", tone: "neural" },
@@ -82,6 +147,148 @@ const PHASE_DATA: Record<
   },
 };
 
+function ReRunMenu({ config }: { config: RunConfig }) {
+  const [open, setOpen] = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const toast = useToast();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  // Close on Escape and on outside click.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusIdx((i) => (i + 1) % PRESETS.length);
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusIdx((i) => (i - 1 + PRESETS.length) % PRESETS.length);
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [open]);
+
+  // Move focus when the active index changes (keyboard nav).
+  useEffect(() => {
+    if (!open) return;
+    buttonRefs.current[focusIdx]?.focus();
+  }, [focusIdx, open]);
+
+  const fire = (preset: MutationPreset) => {
+    const next = preset.mutate(config);
+    toast.push({
+      title: `Re-run queued · ${preset.label}`,
+      description:
+        preset.id === "same"
+          ? "Reusing the original configuration."
+          : preset.diff(config),
+      variant: "info",
+      durationMs: 3200,
+    });
+    // TODO: wire to POST /api/v1/pipeline/create with this mutated config.
+    // For now the queue surface lives only client-side so reviewers can
+    // exercise the UX without an active training cluster.
+    console.log("[RunDetail] re-run requested", { preset: preset.id, config: next });
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <IconRunning size={12} /> Re-run
+      </Button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            role="menu"
+            aria-label="Re-run with mutated config"
+            className="absolute right-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-xl border border-white/[0.08] bg-abyss/95 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          >
+            <div className="border-b border-white/[0.06] px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                Re-run with mutated config
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                Same dataset · same seed · pick a variation below.
+              </p>
+            </div>
+            <ul className="divide-y divide-white/[0.04] py-1">
+              {PRESETS.map((preset, i) => (
+                <li key={preset.id}>
+                  <button
+                    ref={(el) => {
+                      buttonRefs.current[i] = el;
+                    }}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => fire(preset)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fire(preset);
+                      }
+                    }}
+                    onFocus={() => setFocusIdx(i)}
+                    className={[
+                      "group flex w-full cursor-pointer flex-col gap-1 px-3 py-2 text-left transition-colors",
+                      "hover:bg-white/[0.04] focus-visible:bg-white/[0.04] focus-visible:outline-none",
+                    ].join(" ")}
+                  >
+                    <span className="flex items-center justify-between">
+                      <span className="text-[12.5px] font-medium text-slate-200">
+                        {preset.label}
+                      </span>
+                      <span className="rounded bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px] text-slate-400 group-hover:bg-neural/[0.12] group-hover:text-neural">
+                        ↵
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-slate-500">{preset.detail}</span>
+                    <span className="font-mono text-[10.5px] text-slate-400">
+                      {preset.diff(config)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="border-t border-white/[0.06] px-3 py-2 text-[10px] text-slate-500">
+              <span className="font-mono">esc</span> to close ·{" "}
+              <span className="font-mono">↑↓</span> to navigate ·{" "}
+              <span className="font-mono">↵</span> to launch
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function PhaseTimeline({ active }: { active: PhaseTab }) {
   return (
     <div className="relative flex items-center justify-between">
@@ -125,6 +332,7 @@ export function RunDetail() {
       toolbar={
         <>
           <Badge variant="neural" size="xs" dot>running</Badge>
+          <ReRunMenu config={BASE_CONFIG} />
           <Button variant="ghost" size="sm" aria-label="Download report">
             <IconDownload size={12} />
           </Button>
