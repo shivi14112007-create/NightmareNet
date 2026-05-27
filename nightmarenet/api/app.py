@@ -28,6 +28,7 @@ try:
     from slowapi.util import get_remote_address
 
     from nightmarenet.api.auth import APIKeyMiddleware
+    from nightmarenet.api.badge import router as badge_router
     from nightmarenet.api.schemas import (
         CompareRequest,
         CompareResponse,
@@ -102,6 +103,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Copilot router (registered here to share the limiter and avoid circular
+#     imports). Heuristic mode works with no extra deps; LLM mode auto-detects
+#     OPENAI_API_KEY / ANTHROPIC_API_KEY / AZURE_OPENAI_API_KEY at request time.
+from nightmarenet.api.copilot import register_copilot_routes  # noqa: E402
+
+register_copilot_routes(app, limiter)
 
 
 def _apply_dream_distortions(
@@ -221,6 +229,13 @@ def _get_test_count() -> Optional[int]:
     except Exception:
         logger.debug("Failed to count tests", exc_info=True)
     return _test_count_cache["count"]
+
+
+# --- Public sub-routers ---
+# Robustness badges are intentionally unauthenticated so they can be
+# embedded in public READMEs. The /api/v1/badge prefix is allow-listed
+# by APIKeyMiddleware below.
+app.include_router(badge_router)
 
 
 @app.get("/api/v1/health", response_model=HealthResponse, tags=["System"])

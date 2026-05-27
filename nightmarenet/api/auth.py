@@ -26,6 +26,13 @@ _PUBLIC_PATHS = frozenset({
     "/openapi.json",
 })
 
+# Public path prefixes (everything starting with one of these is exempt).
+# Badges are intentionally public so they can be embedded in READMEs and
+# served at CDN-friendly cache durations without leaking API keys.
+_PUBLIC_PREFIXES: tuple = (
+    "/api/v1/badge/",
+)
+
 
 class APIKeyMiddleware(BaseHTTPMiddleware):
     """Validate X-API-Key header against NIGHTMARENET_API_KEY env var.
@@ -44,8 +51,11 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
             )
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        # Skip auth for public paths
-        if request.url.path in _PUBLIC_PATHS:
+        # Skip auth for public paths and prefixes
+        path = request.url.path
+        if path in _PUBLIC_PATHS:
+            return await call_next(request)
+        if any(path.startswith(prefix) for prefix in _PUBLIC_PREFIXES):
             return await call_next(request)
 
         # Skip if auth is disabled (no key configured)
