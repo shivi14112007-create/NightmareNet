@@ -106,3 +106,16 @@ _(Updated after each correction or mistake)_
 - Lucide React doesn't have brand icons (LinkedIn, Twitter, etc.). Use inline SVGs for social brand icons.
 - Mypy strictly enforces Starlette `add_middleware` type constraints starting in newer FastAPI versions (expecting `_MiddlewareFactory`). Subclasses like `SlowAPIMiddleware` trigger `[arg-type]` mismatch errors. Fix by appending `# type: ignore[arg-type]` to the registration call rather than trying to satisfy the internal factory protocol.
 
+## 2026-05-27 — Tautological Docker HEALTHCHECK
+
+**Mistake:** `docker/Dockerfile.worker` HEALTHCHECK was `python -c "import os, sys; sys.exit(0 if os.environ.get('NIGHTMARENET_REDIS_URL') else 1)"` — but the same Dockerfile sets `NIGHTMARENET_REDIS_URL` unconditionally as an `ENV` directive. The check therefore always exits 0, regardless of broker reachability, Celery worker liveness, or fallback-loop state. Docker / Compose orchestrators would never restart a broken worker.
+
+**Why it happened:** Wrote a quick probe based on the env var being a proxy for "is the service configured?" without recognising that the same Dockerfile defines that env var as a build-time constant. The check passed reviewer eyes because reading just the `HEALTHCHECK` line in isolation made it look reasonable.
+
+**Prevention:**
+1. **A healthcheck must observe runtime state, not build-time constants.** TCP-connect, HTTP probe, query the broker, ping the worker — any signal that depends on something outside the image.
+2. **Always read the full Dockerfile when reviewing a healthcheck.** Build-time `ENV`/`ARG` values are not evidence of runtime health.
+3. **Add a regression test that exercises the unhealthy path.** If the test would pass with a deliberately-broken broker URL, the probe is fake.
+
+**Future rule:** No HEALTHCHECK ships without (a) a test in `tests/` that proves it FAILS when the dependency is down, and (b) a comment in the Dockerfile explaining what runtime signal it actually checks. Build-time env vars are never sufficient.
+
