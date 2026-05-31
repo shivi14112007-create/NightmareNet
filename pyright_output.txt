@@ -1,2 +1,0 @@
-Need to install the following packages:
-pyright@1.1.408

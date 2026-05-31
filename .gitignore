@@ -14,25 +14,30 @@ venv/
 .env/
 .venv/
 .venv312/
-cuda-install.log
 
-# Environment / IDEs
+# Secrets & environment
 .env
+
+# IDE / Editor
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# AI agent tooling (keep .cursor/skills/ tracked via override below)
 .cursor/hooks/
 .cursor/plans/
 .cursor/cache/
 .cursor/state/
+.cursor/agents/
+.agent/
+.agents/
+.claude/
+.codex/
 .windsurf/
 .trae/
 .gemini/
 .kiro/
-*.swp
-*.swo
-.vscode/
-.agent/
-.claude/
-.codex/
 
 # Node / Frontend
 node_modules/
@@ -41,7 +46,12 @@ out/
 build/
 coverage/
 
-# Python caching & tools
+# Repo-level Node.js — only frontend/ should have these
+/package.json
+/package-lock.json
+/node_modules/
+
+# Python tooling output
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -52,18 +62,22 @@ pyright_output.txt
 
 # Benchmark / experiment outputs
 results/
+checkpoints/
+logs/
 
+# Log files
+*.log
+cuda-install.log
+gpu-bench.log
 .venv312-install.log
 
-gpu-bench.log
+# Compiled JS dist folders (should never be in source)
+**/dist/
 
-# Repo-level Node.js (only frontend/ should have these)
-/package.json
-/package-lock.json
-/node_modules/
-
-# Junk / transient files
+# Transient / junk
 cursor_general_chat_introduction.md
 cloned-bedrock-vscode-chat/
 plan-nightmareNet.prompt.md
-.agents/
+nightmarenet-overview.md
+Plan.md
+lint_output.txt
