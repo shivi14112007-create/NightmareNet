@@ -25,22 +25,32 @@ Tracked through the `consumer-product-improvement` skill's *Analyze → Critique
 - **[shipped]** OpenAPI documentation for copilot + badge endpoints.
 - **[shipped]** **Fixed tautological worker HEALTHCHECK** — real `healthcheck_worker.py` with TCP broker probe + Celery worker ping. 14 regression tests lock the behavior. (See `tasks/lessons.md` 2026-05-27.)
 
+## Shipped this iteration (2026-06-01)
+
+- **[shipped]** Theme toggle (dark/light/system) — `ThemeProvider` context with `localStorage` persistence, CSS variable swapping, light mode glassmorphism overrides, 3-state toggle in Navbar (desktop + mobile).
+- **[shipped]** Custom NightmareNet SVG logo — orbital rings, neural core, 4 phase-colored dots, `useId()` for unique gradient IDs.
+- **[shipped]** Dashboard navigation from landing page — Hero CTA, Navbar button, Footer link, Playground/Demo contextual links.
+- **[shipped]** GSAP animations — floating gradient orbs in Hero using `useGSAP` with proper scope and cleanup.
+- **[shipped]** WebSocket live progress — `/ws/runs/{run_id}` endpoint in OSS app, PipelineLab auto-upgrades from polling to WS.
+- **[shipped]** 18 code review fixes — critical runtime crash, stale metrics, dead code, license mismatch, deprecated APIs.
+- **[shipped]** Repo cleanup — removed 8,400+ lines of junk (duplicate skill dirs, compiled JS in source, dead components, stale docs).
+- **[shipped]** README rewrite — real benchmark results, 434+ test badge, frontend section, removed stale PyPI badge.
+
 ## Top of backlog (next iteration)
 
 | Rank | Opportunity | Persona | Effort | Notes |
 |-----:|-------------|---------|:------:|-------|
-| 1 | Theme toggle (light/dark) with persistence | Mobile / accessibility | M | Heavy dark design — needs careful palette inversion to preserve cyberpunk feel. |
-| 2 | Per-user palette command history sync | Power user | S | Currently localStorage; sync to `api_keys.last_used_at`-style server store when logged in. |
-| 3 | Wire `RowActionsMenu` actions to real endpoints | Power user | M | "Compare" → `/api/v1/experiments/compare`; "Re-run" → `/api/v1/pipeline/create` with mutated config; "Export" → JSON download. Currently they fire toasts and console.log. |
-| 4 | Wire `RunDetail` re-run-with-mutation to `/api/v1/pipeline/create` | Power user | S | Same as above — currently a toast + TODO comment. |
-| 5 | Real "What's new" changelog feed | Daily user | S | Currently three hardcoded bullets — drive from a JSON file or repo CHANGELOG.md. |
-| 6 | Live robustness-score endpoint for badge | Growth | M | Right now badge shows a passed-in score. Wire `/api/v1/badge/latest.svg` that pulls from the most recent run for an org/project. |
-| 7 | "View changelog" deep link from `WhatsNew` | Daily user | S | Currently disabled link; route to GitHub releases or in-app changelog modal. |
-| 8 | Inline-edit experiment names | Power user | S | Click-to-edit row title in `ExperimentList` with optimistic update + toast on save. |
-| 9 | Empty states across remaining panels (`RobustnessRadar`, `ModelComparison`, `BenchmarkSuite`) | First-time user | S | EmptyState primitive is built; just need to wire it. |
-| 10 | Mobile-responsive sidebar collapse | Mobile user | M | Below `md`, sidebar collapses to a bottom navbar or drawer. |
-| 11 | Voice mode for copilot dock | Wow / accessibility | M | Web Speech API push-to-talk → POST to existing `/api/v1/copilot/ask`. |
-| 12 | Personalized dashboard ordering | Daily user | M | Track section-visit counts in localStorage; reorder sidebar by frequency. |
+| 1 | Per-user palette command history sync | Power user | S | Currently localStorage; sync to server store when logged in. |
+| 2 | Wire `RowActionsMenu` actions to real endpoints | Power user | M | "Compare" → `/api/v1/experiments/compare`; "Re-run" → `/api/v1/pipeline/create` with mutated config; "Export" → JSON download. |
+| 3 | Wire `RunDetail` re-run-with-mutation to `/api/v1/pipeline/create` | Power user | S | Currently a toast + TODO comment. |
+| 4 | Real "What's new" changelog feed | Daily user | S | Currently three hardcoded bullets — drive from CHANGELOG.md. |
+| 5 | Live robustness-score endpoint for badge | Growth | M | Wire `/api/v1/badge/latest.svg` that pulls from the most recent run. |
+| 6 | "View changelog" deep link from `WhatsNew` | Daily user | S | Route to GitHub releases or in-app changelog modal. |
+| 7 | Inline-edit experiment names | Power user | S | Click-to-edit row title in `ExperimentList` with optimistic update. |
+| 8 | Empty states across remaining panels (`RobustnessRadar`, `ModelComparison`, `BenchmarkSuite`) | First-time user | S | EmptyState primitive is built; just wire it. |
+| 9 | Mobile-responsive sidebar collapse | Mobile user | M | Below `md`, sidebar collapses to bottom navbar or drawer. |
+| 10 | Voice mode for copilot dock | Wow / accessibility | M | Web Speech API push-to-talk → POST to `/api/v1/copilot/ask`. |
+| 11 | Personalized dashboard ordering | Daily user | M | Track section-visit counts in localStorage; reorder sidebar by frequency. |
 
 ## Deeper opportunities (research / experiment)
 
