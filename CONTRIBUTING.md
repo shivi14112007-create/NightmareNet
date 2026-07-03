@@ -97,13 +97,13 @@ To request assignment on an issue, comment with:
 | Multiple requests, one has better approach | Better approach wins regardless of timing |
 | Requester already has 2+ open assigned issues without PRs | Skipped in favor of the next requester |
 
-### Maximum Concurrent Assignments
+### Concurrent Assignments (Guidelines, not hard limits)
 
-- **New contributors (0 merged PRs):** 1 assigned issue at a time
-- **Returning contributors (1-3 merged PRs):** 2 concurrent assignments
-- **Established contributors (4+ merged PRs):** 3 concurrent assignments
+We encourage contributors to focus on delivering quality over quantity. As a general guideline:
 
-If you have assigned issues without an open PR after **7 days**, the assignment may be revoked and the issue reopened for others.
+- **New contributors:** Start with 1 issue to build familiarity with the codebase and review process
+- **Returning contributors:** Take on more as you're comfortable, but avoid having multiple stale assignments
+- **The real rule:** If your existing assignments have no open PRs or progress updates, new requests may be deprioritized in favor of contributors who are actively delivering
 
 ### Unassignment
 
