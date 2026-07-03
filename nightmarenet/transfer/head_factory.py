@@ -25,7 +25,7 @@ def create_transfer_model(
     """Create a new model for a downstream task using a foundation backbone.
 
     The foundation model is expected to contain only the base model weights.
-    The HuggingFace library will automatically initialize a new, random 
+    The HuggingFace library will automatically initialize a new, random
     classification head for the specified task type.
 
     Args:
@@ -37,7 +37,7 @@ def create_transfer_model(
         A PyTorch model ready for transfer fine-tuning.
     """
     logger.info("Instantiating new %s model from foundation at %s", task_type, foundation_path)
-    
+
     if task_type == "seq_classification":
         model = AutoModelForSequenceClassification.from_pretrained(
             foundation_path,

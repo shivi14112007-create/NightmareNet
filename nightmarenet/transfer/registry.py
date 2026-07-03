@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -28,7 +27,9 @@ class FoundationRegistry:
             self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def register(self, model_path: str | Path, name: str, metadata: Optional[dict[str, Any]] = None) -> Path:
+    def register(
+        self, model_path: str | Path, name: str, metadata: Optional[dict[str, Any]] = None
+    ) -> Path:
         """Register a fine-tuned model as a foundation backbone.
 
         This extracts ONLY the base model (no classification head) and saves it.
@@ -46,7 +47,7 @@ class FoundationRegistry:
 
         if dest_path.exists():
             logger.warning("Foundation model '%s' already exists. Overwriting.", name)
-        
+
         dest_path.mkdir(parents=True, exist_ok=True)
 
         logger.info("Extracting backbone from %s", model_path_str)
@@ -60,7 +61,7 @@ class FoundationRegistry:
         # Save metadata
         if metadata is None:
             metadata = {}
-        
+
         meta_path = dest_path / "nightmarenet_meta.json"
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
@@ -79,7 +80,9 @@ class FoundationRegistry:
         """
         model_path = self.cache_dir / name
         if not model_path.exists():
-            raise FileNotFoundError(f"Foundation model '{name}' not found in registry at {model_path}.")
+            raise FileNotFoundError(
+                f"Foundation model '{name}' not found in registry at {model_path}."
+            )
 
         logger.info("Loading foundation model '%s'", name)
         backbone = AutoModel.from_pretrained(model_path)
@@ -88,7 +91,7 @@ class FoundationRegistry:
         meta_path = model_path / "nightmarenet_meta.json"
         metadata = {}
         if meta_path.exists():
-            with open(meta_path, "r", encoding="utf-8") as f:
+            with open(meta_path, encoding="utf-8") as f:
                 metadata = json.load(f)
 
         return backbone, tokenizer, metadata
@@ -109,6 +112,8 @@ _default_registry = None
 def get_registry(cache_dir: Optional[str | Path] = None) -> FoundationRegistry:
     """Get the singleton registry instance."""
     global _default_registry
-    if _default_registry is None or (cache_dir is not None and Path(cache_dir) != _default_registry.cache_dir):
+    if _default_registry is None or (
+        cache_dir is not None and Path(cache_dir) != _default_registry.cache_dir
+    ):
         _default_registry = FoundationRegistry(cache_dir)
     return _default_registry

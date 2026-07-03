@@ -106,7 +106,10 @@ class TransferFineTuner:
             progress = tqdm(dataloader, desc=f"Epoch {epoch}", leave=False)
             for batch in progress:
                 # Move batch to device
-                batch = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+                batch = {
+                    k: v.to(self.device) if isinstance(v, torch.Tensor) else v
+                    for k, v in batch.items()
+                }
 
                 self.optimizer.zero_grad()
 

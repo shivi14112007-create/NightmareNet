@@ -2,14 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-import pytest
-from transformers import AutoModelForSequenceClassification
-
-from nightmarenet.transfer.fine_tune import TransferFineTuner
-from nightmarenet.transfer.head_factory import create_transfer_model
 from nightmarenet.transfer.measurement import calculate_transfer_ratio, evaluate_transfer_efficiency
 from nightmarenet.transfer.registry import FoundationRegistry
 from nightmarenet.transfer.report import generate_transfer_report

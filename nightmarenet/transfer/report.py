@@ -31,7 +31,7 @@ def generate_transfer_report(
     """
     transfer_ratio = calculate_transfer_ratio(transferred_robustness, baseline_robustness)
     efficiency = evaluate_transfer_efficiency(transfer_ratio)
-    
+
     compute_savings = 0.0
     if baseline_time_s > 0:
         compute_savings = max(0.0, ((baseline_time_s - transferred_time_s) / baseline_time_s) * 100)
@@ -42,7 +42,8 @@ def generate_transfer_report(
         "## Summary",
         f"**Transfer Efficiency**: {efficiency}",
         f"**Transfer Ratio**: {transfer_ratio:.4f}",
-        f"**Compute Savings**: {compute_savings:.1f}% ({transferred_time_s:.1f}s vs {baseline_time_s:.1f}s)",
+        f"**Compute Savings**: {compute_savings:.1f}% "
+        f"({transferred_time_s:.1f}s vs {baseline_time_s:.1f}s)",
         "",
         "## Detailed Metrics",
         "| Metric | Transferred Model | Full-Cycle Baseline |",

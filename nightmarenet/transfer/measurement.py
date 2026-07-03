@@ -9,7 +9,7 @@ from __future__ import annotations
 def calculate_transfer_ratio(transferred_robustness: float, baseline_robustness: float) -> float:
     """Calculate the robustness transfer ratio.
 
-    The transfer ratio indicates how much of the full-cycle robustness 
+    The transfer ratio indicates how much of the full-cycle robustness
     was successfully transferred to the downstream task via fine-tuning alone.
 
     Args:
