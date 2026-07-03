@@ -124,6 +124,9 @@ If two people request the same issue simultaneously (within 1 hour):
 - Comment your approach BEFORE asking for assignment - it shows you've done research
 - Small PRs merge faster than large ones - if an issue is big, ask if it can be split into sub-issues
 - If you're stuck, comment on the issue asking for help - don't go silent for a week
+- **We merge quickly.** Focus on completing your current assigned issue before requesting new ones. Deliver first, then pick up more.
+- **Think you can do it better?** If an issue is assigned but has no PR or progress after a few days, feel free to comment with your approach. Quality implementations are always welcome - we'd rather merge the best solution regardless of who was "first."
+- All assignment decisions are at the maintainer's discretion based on these guidelines. The goal is shipping great code, not bureaucracy.
 
 ---
 
