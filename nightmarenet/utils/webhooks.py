@@ -73,13 +73,16 @@ def _send_webhook_request(url: str, event_type: str, message: str, details: Dict
             ],
         }
     elif "discord.com" in url or "discordapp.com" in url:
-        color = 16738304 if event_type in ("alert", "regression_detected") else 3447003
         payload = {
             "embeds": [
                 {
                     "title": f"NightmareNet: {event_type.upper()}",
                     "description": message,
-                    "color": color,
+                    "color": (
+                        16738304
+                        if event_type in ("alert", "regression_detected")
+                        else 3447003
+                    ),
                     "fields": [
                         {"name": k, "value": str(v), "inline": True} for k, v in details.items()
                     ]
@@ -89,11 +92,14 @@ def _send_webhook_request(url: str, event_type: str, message: str, details: Dict
             ]
         }
     elif "office.com" in url or "microsoft.com" in url or "webhook.office.com" in url:
-        color = "FF0000" if event_type in ("alert", "regression_detected") else "0078D7"
         payload = {
             "@type": "MessageCard",
             "@context": "http://schema.org/extensions",
-            "themeColor": color,
+            "themeColor": (
+                "FF0000"
+                if event_type in ("alert", "regression_detected")
+                else "0078D7"
+            ),
             "summary": message,
             "title": f"NightmareNet: {event_type.upper()}",
             "sections": [
