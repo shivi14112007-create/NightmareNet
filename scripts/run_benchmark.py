@@ -95,6 +95,25 @@ def main() -> int:
         json.dump(result, f, indent=2, default=str)
 
     print(f"Benchmark results written to {output_path}")
+
+    # Trigger deploy webhook if notifications.webhooks are configured
+    try:
+        from nightmarenet.utils.config import load_config
+        from nightmarenet.utils.webhooks import trigger_webhook
+        config = load_config(str(REPO_ROOT / "configs" / "default.yaml"))
+        trigger_webhook(
+            config,
+            "deploy",
+            "SST-2 benchmark run finished.",
+            {
+                "mode": result.get("mode", "unknown"),
+                "timestamp": result.get("timestamp"),
+                "output_path": str(output_path),
+            }
+        )
+    except Exception as e:
+        print(f"Warning: Failed to trigger webhook notification: {e}")
+
     return 0
 
 

@@ -94,7 +94,10 @@ class Pipeline:
         self,
         config: dict,
         on_event: Optional[Callable[[dict], None]] = None,
+        run_id: Optional[str] = None,
     ) -> None:
+        import uuid
+        self.run_id = run_id or str(uuid.uuid4())
         self.config = config
         self.on_event = on_event
         self.metrics = PipelineMetrics()
@@ -134,6 +137,19 @@ class Pipeline:
         self.metrics.status = PipelineStatus.FAILED
         self.metrics.error = error
         self._emit()
+
+        from nightmarenet.utils.webhooks import trigger_webhook
+        trigger_webhook(
+            self.config,
+            "run_complete",
+            "Pipeline run failed.",
+            {
+                "run_id": self.run_id,
+                "status": "failed",
+                "error": error,
+                "model": self.config.get("model", {}).get("name", "unknown"),
+            },
+        )
 
     def cancel(self) -> None:
         """Request graceful cancellation of a running pipeline."""
@@ -409,6 +425,7 @@ class Pipeline:
 
                 # Create trainer (loads model + tokenizer)
                 self._trainer = Trainer(config=self.config)
+                self._trainer.run_id = self.run_id
 
                 # Snapshot baseline model weights for later evaluation
                 self._baseline_model = copy.deepcopy(self._trainer.model)
@@ -580,12 +597,62 @@ class Pipeline:
 
                 self._compute_quality_feedback(comparison)
 
+                # Trigger webhook for run_complete (success)
+                from nightmarenet.utils.webhooks import trigger_webhook
+
+                robustness_metric = comparison.get("metrics", {}).get("robustness", {})
+                robustness_delta = robustness_metric.get("deltas", {}).get("auc_robustness")
+                if robustness_delta is None:
+                    robustness_delta = comparison.get("robustness_delta")
+
+                trigger_webhook(
+                    self.config,
+                    "run_complete",
+                    "Pipeline run completed successfully.",
+                    {
+                        "run_id": self.run_id,
+                        "status": "complete",
+                        "model": self.config.get("model", {}).get("name", "unknown"),
+                        "robustness_delta": (
+                            f"{robustness_delta:+.4f}"
+                            if isinstance(robustness_delta, float)
+                            else "N/A"
+                        ),
+                    },
+                )
+
+                # Trigger webhook for regression_detected
+                if isinstance(robustness_delta, (int, float)) and robustness_delta < 0:
+                    baseline_auc = (
+                        robustness_metric.get("baseline", {})
+                        .get("auc_robustness", "N/A")
+                    )
+                    trained_auc = (
+                        robustness_metric.get("trained", {})
+                        .get("auc_robustness", "N/A")
+                    )
+                    trigger_webhook(
+                        self.config,
+                        "regression_detected",
+                        (
+                            "Robustness regression detected after training! "
+                            f"Drop: {robustness_delta:+.4f}"
+                        ),
+                        {
+                            "run_id": self.run_id,
+                            "model": self.config.get("model", {}).get("name", "unknown"),
+                            "robustness_delta": f"{robustness_delta:+.4f}",
+                            "baseline_auc": baseline_auc,
+                            "trained_auc": trained_auc,
+                        },
+                    )
+
                 # Export robustness delta as an OTel metric
-                robustness_delta = comparison.get("robustness_delta")
-                if robustness_delta is not None:
+                robustness_delta_val = comparison.get("robustness_delta")
+                if robustness_delta_val is not None:
                     record_metric(
                         "robustness_score",
-                        float(robustness_delta),
+                        float(robustness_delta_val),
                         {"model": self.config.get("model", {}).get("name", "unknown")},
                     )
 

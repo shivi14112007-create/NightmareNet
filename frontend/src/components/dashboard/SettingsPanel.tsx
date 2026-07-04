@@ -8,16 +8,24 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { useSounds } from "@/lib/sounds";
-import { IconKey, IconSettings, IconShield, IconWand } from "./icons";
+import { IconKey, IconSettings, IconShield, IconWand, IconBell } from "./icons";
+import { testWebhook } from "@/lib/api";
 
-type Tab = "keys" | "model" | "distortion" | "integrations";
+type Tab = "keys" | "model" | "distortion" | "integrations" | "notifications";
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: "keys", label: "API Keys", icon: <IconKey size={12} /> },
   { key: "model", label: "Model", icon: <IconShield size={12} /> },
   { key: "distortion", label: "Distortion", icon: <IconWand size={12} /> },
   { key: "integrations", label: "Integrations", icon: <IconSettings size={12} /> },
+  { key: "notifications", label: "Notifications", icon: <IconBell size={12} /> },
 ];
+
+interface WebhookConfig {
+  id: string;
+  url: string;
+  events: string[];
+}
 
 interface ApiKey {
   id: string;
@@ -49,6 +57,26 @@ export function SettingsPanel() {
   const [wandbKey, setWandbKey] = useState("");
   const toast = useToast();
   const sounds = useSounds();
+
+  const [webhooks, setWebhooks] = useState<WebhookConfig[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("nightmarenet-webhooks");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          // fallback
+        }
+      }
+    }
+    return [
+      {
+        id: "wh-1",
+        url: "https://hooks.slack.com/services/YOUR_WORKSPACE/YOUR_CHANNEL/YOUR_TOKEN",
+        events: ["run_complete", "regression_detected", "alert"],
+      },
+    ];
+  });
 
   return (
     <Panel
@@ -266,6 +294,160 @@ export function SettingsPanel() {
               Save all
             </Button>
           </div>
+        </div>
+      )}
+
+      {tab === "notifications" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-slate-400">
+              Configure incoming webhooks for real-time Slack, Discord, or MS Teams alerts.
+            </p>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                const newWh: WebhookConfig = {
+                  id: `wh-${Date.now()}`,
+                  url: "",
+                  events: ["run_complete", "regression_detected", "alert", "deploy"],
+                };
+                setWebhooks([...webhooks, newWh]);
+              }}
+            >
+              Add Webhook
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {webhooks.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/[0.08] p-6 text-center text-slate-500">
+                No webhooks configured. Click &quot;Add Webhook&quot; to get started.
+              </div>
+            ) : (
+              webhooks.map((wh) => (
+                <div
+                  key={wh.id}
+                  className="rounded-lg border border-white/[0.06] bg-white/[0.01] p-3.5 space-y-3"
+                >
+                  <div className="flex gap-2">
+                    <Input
+                      label="Webhook URL"
+                      placeholder="https://hooks.slack.com/services/..."
+                      value={wh.url}
+                      onChange={(e) => {
+                        const updated = webhooks.map((w) =>
+                          w.id === wh.id ? { ...w, url: e.target.value } : w
+                        );
+                        setWebhooks(updated);
+                      }}
+                    />
+                    <div className="flex items-end pb-0.5">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => {
+                          setWebhooks(webhooks.filter((w) => w.id !== wh.id));
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      Subscribed Events
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { key: "run_complete", label: "Pipeline Complete" },
+                        { key: "regression_detected", label: "Regression" },
+                        { key: "alert", label: "VRAM Alert" },
+                        { key: "deploy", label: "Benchmark Finish" },
+                      ].map((ev) => {
+                        const active = wh.events.includes(ev.key);
+                        return (
+                          <label
+                            key={ev.key}
+                            className="flex cursor-pointer items-center gap-2 rounded bg-white/[0.02] p-1.5 hover:bg-white/[0.04]"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={active}
+                              onChange={() => {
+                                const newEvents = active
+                                  ? wh.events.filter((e) => e !== ev.key)
+                                  : [...wh.events, ev.key];
+                                const updated = webhooks.map((w) =>
+                                  w.id === wh.id ? { ...w, events: newEvents } : w
+                                );
+                                setWebhooks(updated);
+                              }}
+                              className="rounded border-white/[0.1] bg-black/40 text-neural focus:ring-0"
+                            />
+                            <span className="text-[11px] text-slate-300">{ev.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 border-t border-white/[0.04] pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!wh.url}
+                      onClick={async () => {
+                        toast.push({
+                          title: "Testing Webhook",
+                          description: "Sending test payload...",
+                          variant: "info",
+                        });
+                        try {
+                          const testEvent = wh.events[0] || "run_complete";
+                          await testWebhook({ url: wh.url, event_type: testEvent });
+                          toast.push({
+                            title: "Webhook Verified",
+                            description: "Test notification sent successfully.",
+                            variant: "success",
+                          });
+                        } catch (err: unknown) {
+                          const msg = err instanceof Error ? err.message : "Unknown error.";
+                          toast.push({
+                            title: "Connection Failed",
+                            description: msg,
+                            variant: "warning",
+                          });
+                        }
+                      }}
+                    >
+                      Test Connection
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {webhooks.length > 0 && (
+            <div className="flex justify-end pt-2">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  localStorage.setItem("nightmarenet-webhooks", JSON.stringify(webhooks));
+                  toast.push({
+                    title: "Webhooks Saved",
+                    description: "Webhook configuration saved successfully.",
+                    variant: "success",
+                  });
+                }}
+              >
+                Save webhooks
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Panel>

@@ -328,3 +328,13 @@ class PipelineReportResponse(BaseModel):
     report_md: str
     comparison: Optional[dict[str, Any]] = None
 
+
+class TestWebhookRequest(BaseModel):
+    """Request body for testing a webhook URL."""
+
+    url: str = Field(..., description="The webhook endpoint URL.")
+    event_type: str = Field(
+        default="run_complete",
+        description="Event type to test: run_complete, regression_detected, alert, deploy",
+    )
+

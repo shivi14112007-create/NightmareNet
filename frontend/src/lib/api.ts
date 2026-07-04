@@ -596,3 +596,17 @@ export function estimateOptimization(body: DataOptimizeRequest): Promise<DataOpt
     body: JSON.stringify(body),
   });
 }
+
+// --- Notifications & Webhooks ---
+
+export interface TestWebhookRequest {
+  url: string;
+  event_type: string;
+}
+
+export function testWebhook(body: TestWebhookRequest): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>("/api/v1/notifications/test-webhook", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

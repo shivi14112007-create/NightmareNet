@@ -327,6 +327,28 @@ def main() -> int:
     )
     print(f"Robustness improvement: {improvement:+.4f}  ({relative_pct:+.2f}%)")
     print(f"Written: {out_path}")
+
+    # Trigger deploy webhook if notifications.webhooks are configured
+    try:
+        from nightmarenet.utils.config import load_config
+        from nightmarenet.utils.webhooks import trigger_webhook
+        config = load_config(str(REPO_ROOT / "configs" / "default.yaml"))
+        trigger_webhook(
+            config,
+            "deploy",
+            "SST-2 GPU benchmark run finished.",
+            {
+                "model": args.model,
+                "device": args.device,
+                "timestamp": result.get("timestamp"),
+                "avg_distorted_delta": f"{improvement:+.4f}",
+                "improvement_pct": f"{relative_pct:.2f}%",
+                "output_path": str(out_path),
+            }
+        )
+    except Exception as e:
+        print(f"Warning: Failed to trigger webhook notification: {e}")
+
     return 0
 
 

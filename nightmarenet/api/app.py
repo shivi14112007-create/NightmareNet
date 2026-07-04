@@ -52,6 +52,7 @@ try:
         PipelineStatusResponse,
         RobustnessRequest,
         RobustnessResponse,
+        TestWebhookRequest,
         TrainingConfigRequest,
         TrainingConfigResponse,
         TrainingPhasePreview,
@@ -975,6 +976,83 @@ async def get_pipeline_report(run_id: str):
         report_md=metrics.report_md,
         comparison=metrics.comparison,
     )
+
+
+_TEST_WEBHOOK_BODY = Body(...)
+
+
+@app.post(
+    "/api/v1/notifications/test-webhook",
+    responses={
+        400: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+    summary="Send a test notification to a webhook URL",
+    tags=["notifications"],
+)
+async def test_webhook_endpoint(
+    request: Request,
+    body: TestWebhookRequest = _TEST_WEBHOOK_BODY,
+):
+    """Send a test notification payload to verify webhook integration."""
+    from nightmarenet.utils.webhooks import trigger_webhook
+
+    # Temporary configuration dict containing the target webhook
+    temp_config = {
+        "notifications": {
+            "webhooks": [
+                {
+                    "url": body.url,
+                    "events": [body.event_type],
+                }
+            ]
+        }
+    }
+
+    try:
+        # Build some mock details depending on the event type
+        details = {
+            "test": "true",
+            "message": f"This is a test notification for {body.event_type}.",
+        }
+        if body.event_type == "run_complete":
+            details.update(
+                {"run_id": "test-run-12345", "status": "complete", "model": "gpt2"}
+            )
+        elif body.event_type == "regression_detected":
+            details.update(
+                {
+                    "robustness_delta": "-0.0543",
+                    "baseline_auc": "0.8520",
+                    "trained_auc": "0.7977",
+                }
+            )
+        elif body.event_type == "alert":
+            details.update(
+                {
+                    "gpu": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+                    "usage_percent": "91.2%",
+                }
+            )
+        elif body.event_type == "deploy":
+            details.update(
+                {"mode": "full", "output_path": "results/benchmark-v1.json"}
+            )
+
+        trigger_webhook(
+            temp_config,
+            body.event_type,
+            f"Test notification: {body.event_type} integration test.",
+            details,
+        )
+        return {"status": "ok"}
+    except Exception as e:
+        logger.exception("Test webhook failed: %s", e)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to dispatch test webhook: {e}",
+        ) from None
 
 
 # ------------------------------------------------------------------

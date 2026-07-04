@@ -98,6 +98,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "project": "nightmarenet",
         "log_dir": "logs/runs",
     },
+    "notifications": {
+        "webhooks": [],
+    },
 }
 
 # Schema for type validation: maps dotted key paths to (expected_type, min, max, required).
@@ -214,6 +217,45 @@ def validate_config(config: dict) -> list[str]:
                 errors.append(
                     f"Config '{dotted_key}' must be <= {max_val}, got {value}"
                 )
+
+    webhooks = _get_nested(config, "notifications.webhooks")
+    if webhooks is not None:
+        if not isinstance(webhooks, list):
+            errors.append("Config 'notifications.webhooks' must be a list")
+        else:
+            for i, wh in enumerate(webhooks):
+                if not isinstance(wh, dict):
+                    errors.append(f"Config 'notifications.webhooks[{i}]' must be a mapping")
+                    continue
+                if "url" not in wh:
+                    errors.append(
+                        f"Config 'notifications.webhooks[{i}]' missing required key: 'url'"
+                    )
+                elif not isinstance(wh["url"], str):
+                    errors.append(f"Config 'notifications.webhooks[{i}].url' must be a string")
+                if "events" in wh:
+                    if not isinstance(wh["events"], list):
+                        errors.append(
+                            f"Config 'notifications.webhooks[{i}].events' must be a list"
+                        )
+                    else:
+                        for j, ev in enumerate(wh["events"]):
+                            if not isinstance(ev, str):
+                                errors.append(
+                                    f"Config 'notifications.webhooks[{i}].events[{j}]' "
+                                    "must be a string"
+                                )
+                            elif ev not in (
+                                "run_complete",
+                                "regression_detected",
+                                "alert",
+                                "deploy",
+                            ):
+                                errors.append(
+                                    f"Config 'notifications.webhooks[{i}].events[{j}]' "
+                                    "must be one of ('run_complete', 'regression_detected', "
+                                    f"'alert', 'deploy'), got {ev!r}"
+                                )
 
     return errors
 

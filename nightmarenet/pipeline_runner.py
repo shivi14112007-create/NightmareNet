@@ -39,6 +39,7 @@ class PipelineRunner:
     ) -> None:
         self.id = str(uuid.uuid4())
         self.pipeline = pipeline
+        self.pipeline.run_id = self.id
         self.on_event = on_event
         self._thread: Optional[threading.Thread] = None
         self._cancel_event = threading.Event()
