@@ -144,7 +144,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 
         print("NightmareNet Ensemble Benchmark Suite")
         print(f"  Config: {args.config}")
-        print(f"  Output: {args.output}")
+        print(f"  Output: {args.output if args.output else './results'}")
         print()
 
         orchestrator = EnsembleOrchestrator(args.config)
@@ -158,11 +158,11 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
         curves = calculate_degradation_curves(results["raw_results"])
         results["degradation_curves"] = curves
 
-        if args.output:
-            # We want json, csv, latex
-            # format_all reads 'models_summary' from results dict for table generation
-            format_all(results, formats=["json", "csv", "latex"], output_dir=args.output)
-            print(f"\nResults saved to {args.output}")
+        output_dir = args.output if args.output else "./results"
+        # We want json, csv, latex
+        # format_all reads 'models_summary' from results dict for table generation
+        format_all(results, formats=["json", "csv", "latex"], output_dir=output_dir)
+        print(f"\nResults saved to {output_dir}")
 
         return 0
 

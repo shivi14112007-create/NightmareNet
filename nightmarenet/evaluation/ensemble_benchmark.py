@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
+from pathlib import Path
 from typing import Any, Optional
 
+import numpy as np
 import torch
 import yaml
 from pydantic import BaseModel, Field
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from nightmarenet.distortions.registry import get_registry
-from nightmarenet.evaluation.metrics import robustness_score
+from nightmarenet.evaluation.metrics import classification_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -36,27 +39,24 @@ class EnsembleConfig(BaseModel):
     distortions: list[DistortionConfig] = Field(default_factory=list)
 
 
-
 def _evaluate_model_worker(
     model_name: str,
     dataset_name: str,
     dataset_split: str,
     max_samples: int,
     text_column: str,
-    distortion_type: str,
-    strengths: list[float],
+    distortions_data: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Worker function to evaluate a single model.
 
     Runs in a separate process to ensure memory is freed after execution.
     """
     from datasets import load_dataset
+    from torch.utils.data import DataLoader
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     logger.info("Loading model %s on %s", model_name, device)
-    # Using sequence classification as baseline for benchmarking.
-    # Can be extended to generic AutoModel later.
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name)
     model.to(device)
@@ -71,42 +71,76 @@ def _evaluate_model_worker(
 
     registry = get_registry()
 
-    def distortion_fn(text, strength):
-        return registry.apply(distortion_type, text, strength=strength, seed=42)
-
     start_time = time.time()
+    
+    total_auc = 0.0
+    results_by_distortion = {}
 
     try:
-        # We reuse robustness_score from metrics
-        # Note: robustness_score currently evaluates perplexity, which means
-        # it expects CausalLM. If we use SequenceClassification, we might need
-        # to adapt it, but for now we follow the existing evaluate API that expects
-        # the model to accept input_ids and labels (which SequenceClassification does).
-        # Actually SequenceClassification returns loss, which compute_perplexity can use.
-        result = robustness_score(
-            model=model,
-            base_dataset=ds,
-            tokenizer=tokenizer,
-            distortion_fn=distortion_fn,
-            strengths=strengths,
-            text_column=text_column,
-            max_length=128,
-            batch_size=8,
-            device=device,
-        )
+        for dist_dict in distortions_data:
+            distortion_type = dist_dict["type"]
+            strengths = dist_dict["strengths"]
+            
+            accuracies = []
+            for strength in strengths:
+                def distortion_fn(text, _s=strength):
+                    return registry.apply(distortion_type, text, strength=_s, seed=42)
+
+                distorted = ds.map(
+                    lambda x: {text_column: distortion_fn(x[text_column])},
+                    desc=f"Distorting {distortion_type} at strength {strength:.1f}"
+                )
+
+                def tokenize_fn(examples):
+                    return tokenizer(
+                        examples[text_column],
+                        truncation=True,
+                        padding="max_length",
+                        max_length=128,
+                        return_tensors="pt",
+                    )
+
+                tokenized = distorted.map(
+                    tokenize_fn,
+                    batched=True,
+                    remove_columns=distorted.column_names,
+                )
+                
+                # Ensure labels column exists for classification_metrics
+                if "label" in tokenized.column_names and "labels" not in tokenized.column_names:
+                    tokenized = tokenized.rename_column("label", "labels")
+
+                tokenized.set_format("torch")
+                dataloader = DataLoader(tokenized, batch_size=8)
+                
+                metrics = classification_metrics(model, dataloader, device=device)
+                accuracies.append(metrics.get("accuracy", 0.0))
+            
+            _trapz_fn = getattr(np, "trapezoid", None)
+            if _trapz_fn is None:
+                _trapz_fn = np.trapz
+            auc = float(_trapz_fn(accuracies, strengths))
+            total_auc += auc
+            
+            results_by_distortion[distortion_type] = {
+                "strengths": strengths,
+                "accuracies": accuracies,
+                "auc": auc
+            }
+
     except Exception as e:
         logger.error("Evaluation failed for %s: %s", model_name, e)
         raise e
 
     latency = time.time() - start_time
+    avg_auc = total_auc / max(1, len(distortions_data))
 
     return {
         "model": model_name,
-        "robustness": result.get("auc_robustness", 0.0),
+        "robustness": avg_auc,
         "latency": latency,
         "params": params,
-        "strengths": result.get("strengths", []),
-        "perplexities": result.get("perplexities", []),
+        "results_by_distortion": results_by_distortion,
     }
 
 
@@ -137,17 +171,30 @@ class EnsembleOrchestrator:
         distortions = self.config.distortions
 
         if not distortions:
-            distortion_type = "dream"
-            strengths = [0.1, 0.3, 0.5, 0.7, 0.9]
+            distortions_data = [{"type": "dream", "strengths": [0.1, 0.3, 0.5, 0.7, 0.9]}]
         else:
-            distortion_type = distortions[0].type
-            strengths = distortions[0].strengths
+            distortions_data = [{"type": d.type, "strengths": d.strengths} for d in distortions]
 
         results = {}
         models_summary = []
+        
+        cache_dir = Path(".nightmarenet_cache")
+        cache_dir.mkdir(exist_ok=True)
 
         for model_name in models:
             logger.info("Starting evaluation for %s", model_name)
+            
+            cache_file = cache_dir / f"benchmark_{model_name.replace('/', '_')}_{ds_name}.json"
+            if cache_file.exists():
+                logger.info("Loading cached results for %s", model_name)
+                try:
+                    with open(cache_file, "r") as f:
+                        cached_data = json.load(f)
+                        models_summary.append(cached_data["summary"])
+                        results[model_name] = cached_data["results"]
+                        continue
+                except Exception as e:
+                    logger.warning("Failed to load cache for %s: %s", model_name, e)
 
             with ProcessPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(
@@ -155,23 +202,30 @@ class EnsembleOrchestrator:
                     model_name,
                     ds_name,
                     ds_split,
-                    max_samples,
+                    max_samples or 100,
                     text_column,
-                    distortion_type,
-                    strengths,
+                    distortions_data,
                 )
                 try:
                     res = future.result(timeout=timeout_seconds)
-                    models_summary.append({
+                    summary = {
                         "model": res["model"],
                         "robustness": res["robustness"],
                         "latency": res["latency"],
                         "params": res["params"],
-                    })
-                    results[model_name] = {
-                        "strengths": res["strengths"],
-                        "perplexities": res["perplexities"],
                     }
+                    models_summary.append(summary)
+                    
+                    model_results = res["results_by_distortion"]
+                    results[model_name] = model_results
+                    
+                    # Save to cache
+                    with open(cache_file, "w") as f:
+                        json.dump({
+                            "summary": summary,
+                            "results": model_results
+                        }, f)
+                        
                 except TimeoutError:
                     logger.error("Timeout exceeded for model %s", model_name)
                 except Exception as e:

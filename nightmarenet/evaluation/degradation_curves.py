@@ -10,30 +10,28 @@ def calculate_degradation_curves(model_results: dict[str, dict]) -> dict[str, li
         model_results: A mapping from model name to its evaluation results.
             Expected format for each model's results:
             {
-                "strengths": [
-                    {
-                        "strength": 0.1,
-                        "dream_similarity": 0.95,
-                        "nightmare_similarity": 0.90
-                    },
-                    ...
-                ]
+                "distortion_type": {
+                    "strengths": [0.1, ...],
+                    "accuracies": [0.95, ...]
+                }
             }
 
     Returns:
         A dictionary mapping model names to a list of data points representing
-        the degradation curve (strength vs perplexity).
+        the degradation curve (strength vs robustness).
     """
     curves = {}
     for model_name, results in model_results.items():
         curve = []
-        strengths = results.get("strengths", [])
-        perplexities = results.get("perplexities", [])
-
-        for s, p in zip(strengths, perplexities):
-            curve.append({
-                "strength": s,
-                "robustness": p  # Lower perplexity is better
-            })
+        for distortion, dist_results in results.items():
+            strengths = dist_results.get("strengths", [])
+            accuracies = dist_results.get("accuracies", [])
+            
+            for s, acc in zip(strengths, accuracies):
+                curve.append({
+                    "distortion": distortion,
+                    "strength": s,
+                    "robustness": acc
+                })
         curves[model_name] = curve
     return curves
