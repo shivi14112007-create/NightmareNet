@@ -221,6 +221,17 @@ def test_trainer_resume_corrupted_phase(minimal_config, shared_model_and_tokeniz
     state["phase"] = "corrupted_phase_name"
     torch.save(state, state_file)
 
+    # Re-calculate the checksum of training_state.pt and update metadata.json to pass integrity check
+    import json
+    from nightmarenet.distributed.checkpoint import compute_file_sha256
+    new_hash = compute_file_sha256(state_file)
+    meta_path = os.path.join(path, "metadata.json")
+    with open(meta_path, "r") as f:
+        meta = json.load(f)
+    meta["file_hashes"]["training_state.pt"] = new_hash
+    with open(meta_path, "w") as f:
+        json.dump(meta, f, indent=2)
+
     # Attempt to load state in a new trainer should raise ValueError
     resume_config = minimal_config.copy()
     resume_config["training"] = minimal_config["training"].copy()
@@ -444,3 +455,90 @@ def test_adaptive_scheduler_resume(minimal_config, shared_model_and_tokenizer):
     remaining_phases = list(trainer2.scheduler.base_scheduler)
     assert len(remaining_phases) == 6
     assert remaining_phases[0] == (0, "nightmare", 1)
+
+
+def test_optimizer_param_group_mismatch(minimal_config, shared_model_and_tokenizer, caplog):
+    """Test that a warning is logged and loading optimizer state is skipped if param group count mismatches."""
+    import logging
+    model, tokenizer = shared_model_and_tokenizer
+    trainer1 = Trainer(config=minimal_config, model=model, tokenizer=tokenizer)
+
+    # Save checkpoint manually at cycle 0 wake
+    trainer1.history = [{"phase": "wake", "avg_loss": 2.5, "cycle": 0}]
+    trainer1._save_checkpoint(cycle=0, phase="wake")
+    checkpoint_path = os.path.join(trainer1.checkpoint_dir, "default_run", "cycle-0-wake")
+
+    # Now create a new trainer and mock its optimizer param groups to have a different count
+    resume_config = minimal_config.copy()
+    resume_config["training"] = minimal_config["training"].copy()
+    resume_config["training"]["resume_from"] = checkpoint_path
+
+    trainer2 = Trainer(
+        config=resume_config,
+        model=model,
+        tokenizer=tokenizer,
+    )
+    # Manually append a dummy param group to change group count
+    trainer2.optimizer.add_param_group({"params": []})
+
+    base_ds = _make_tiny_dataset(4)
+    train_ds = _tokenize_dataset(base_ds, tokenizer)
+    loader = DataLoader(train_ds, batch_size=2)
+
+    # Interrupt immediately
+    def on_progress(event):
+        trainer2._interrupted = True
+
+    with caplog.at_level(logging.WARNING):
+        trainer2.train(
+            train_dataloader=loader,
+            dream_dataloader=loader,
+            nightmare_dataloader=loader,
+            val_dataloader=loader,
+            on_progress=on_progress
+        )
+
+    # Verify warning was logged
+    assert "Optimizer param group count mismatch" in caplog.text
+
+
+def test_checkpoint_version_compatibility(minimal_config, shared_model_and_tokenizer):
+    """Test that validating checkpoint integrity raises ValueError on incompatible version."""
+    import json
+    from nightmarenet.distributed.checkpoint import validate_checkpoint_integrity
+    model, tokenizer = shared_model_and_tokenizer
+    trainer = Trainer(config=minimal_config, model=model, tokenizer=tokenizer)
+    trainer.history = [{"phase": "wake", "avg_loss": 2.5, "cycle": 0}]
+    trainer._save_checkpoint(cycle=0, phase="wake")
+    checkpoint_path = os.path.join(trainer.checkpoint_dir, "default_run", "cycle-0-wake")
+
+    # Modify version in metadata.json to be incompatible
+    meta_path = os.path.join(checkpoint_path, "metadata.json")
+    with open(meta_path, "r") as f:
+        metadata = json.load(f)
+    metadata["version"] = "999.0.0"
+    with open(meta_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+
+    # Attempting to validate should raise ValueError
+    with pytest.raises(ValueError, match="Incompatible checkpoint version 999.0.0"):
+        validate_checkpoint_integrity(checkpoint_path, minimal_config)
+
+
+def test_checkpoint_checksum_integrity_validation(minimal_config, shared_model_and_tokenizer):
+    """Test that modifying saved file contents triggers integrity validation failure."""
+    from nightmarenet.distributed.checkpoint import validate_checkpoint_integrity
+    model, tokenizer = shared_model_and_tokenizer
+    trainer = Trainer(config=minimal_config, model=model, tokenizer=tokenizer)
+    trainer.history = [{"phase": "wake", "avg_loss": 2.5, "cycle": 0}]
+    trainer._save_checkpoint(cycle=0, phase="wake")
+    checkpoint_path = os.path.join(trainer.checkpoint_dir, "default_run", "cycle-0-wake")
+
+    # Corrupt optimizer.pt file
+    optimizer_pt = os.path.join(checkpoint_path, "optimizer.pt")
+    with open(optimizer_pt, "ab") as f:
+        f.write(b"corrupted_tail_bytes")
+
+    # Validation should raise ValueError due to checksum mismatch
+    with pytest.raises(ValueError, match="Integrity check failed: Checksum mismatch"):
+        validate_checkpoint_integrity(checkpoint_path, minimal_config)

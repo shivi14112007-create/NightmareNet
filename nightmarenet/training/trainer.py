@@ -129,9 +129,8 @@ class Trainer:
         resume_from = self.training_config.get("resume_from")
         model_name = self.model_config.get("name", "gpt2")
         self.model_type = self.model_config.get("type", "causal_lm")
-        model_load_path = resume_from if resume_from else model_name
         if model is None:
-            logger.info("Loading model: %s (type=%s)", model_load_path, self.model_type)
+            logger.info("Loading model base architecture: %s (type=%s)", model_name, self.model_type)
             model_cls = _MODEL_TYPE_MAP.get(self.model_type)
             if model_cls is None:
                 raise ValueError(
@@ -142,12 +141,17 @@ class Trainer:
                 kwargs = {}
                 if self.model_type == "seq_classification":
                     kwargs["num_labels"] = self.model_config.get("num_labels", 2)
-                self.model = model_cls.from_pretrained(model_load_path, **kwargs)
+                self.model = model_cls.from_pretrained(model_name, **kwargs)
             except Exception as exc:
-                raise RuntimeError(f"Failed to load model '{model_load_path}': {exc}") from exc
+                raise RuntimeError(f"Failed to load model '{model_name}': {exc}") from exc
         else:
             self.model = model
         self.model.to(self.device)
+
+        # Load weights from checkpoint if resuming
+        if resume_from:
+            from nightmarenet.distributed.checkpoint import load_model_weights
+            load_model_weights(self.model, resume_from, self.device)
 
         if tokenizer is None:
             has_resume = resume_from and os.path.exists(resume_from)
@@ -298,6 +302,26 @@ class Trainer:
         torch.save(state, os.path.join(path, "training_state.pt"))
         logger.info("Checkpoint saved: %s (including training state)", path)
 
+        # Post-save validation and complete file hashes update
+        meta_path = os.path.join(path, "metadata.json")
+        try:
+            from nightmarenet.distributed.checkpoint import compute_dir_hashes, validate_checkpoint_integrity
+            file_hashes = compute_dir_hashes(path)
+            metadata = {}
+            if os.path.exists(meta_path):
+                with open(meta_path, "r") as f:
+                    metadata = json.load(f)
+            metadata["file_hashes"] = file_hashes
+            with open(meta_path, "w") as f:
+                json.dump(metadata, f, indent=2)
+
+            # Post-save validation check
+            validate_checkpoint_integrity(path, self.config)
+            logger.info("Post-save checkpoint integrity validation passed successfully.")
+        except Exception as e:
+            logger.error("Post-save checkpoint integrity validation failed: %s", e)
+            raise
+
     def _save_history(self):
         """Save training history to a JSON file."""
         path = os.path.join(self.log_dir, "training_history.json")
@@ -343,6 +367,14 @@ class Trainer:
         # Load training state if resuming
         resume_from = self.training_config.get("resume_from")
         if resume_from:
+            from nightmarenet.distributed.checkpoint import validate_checkpoint_integrity
+            try:
+                # Explicit structural, version and checksum validation of the checkpoint folder
+                validate_checkpoint_integrity(resume_from, self.config)
+            except Exception as val_err:
+                logger.error("Checkpoint integrity validation failed: %s", val_err)
+                raise ValueError(f"Cannot resume from corrupted checkpoint: {val_err}") from val_err
+
             state_path = os.path.join(resume_from, "training_state.pt")
             if os.path.exists(state_path):
                 logger.info("Resuming training state from %s", state_path)
