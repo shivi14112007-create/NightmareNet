@@ -458,9 +458,8 @@ def test_adaptive_scheduler_resume(minimal_config, shared_model_and_tokenizer):
     assert remaining_phases[0] == (0, "nightmare", 1)
 
 
-def test_optimizer_param_group_mismatch(minimal_config, shared_model_and_tokenizer, caplog):
+def test_optimizer_param_group_mismatch(minimal_config, shared_model_and_tokenizer):
     """Test warning logging and skipping optimizer load if param groups mismatch."""
-    import logging
     model, tokenizer = shared_model_and_tokenizer
     trainer1 = Trainer(config=minimal_config, model=model, tokenizer=tokenizer)
 
@@ -490,26 +489,23 @@ def test_optimizer_param_group_mismatch(minimal_config, shared_model_and_tokeniz
     def on_progress(event):
         trainer2._interrupted = True
 
-    logger = logging.getLogger("nightmarenet.training.trainer")
-    old_level = logger.level
-    old_propagate = logger.propagate
-    logger.setLevel(logging.WARNING)
-    logger.propagate = True
-    try:
-        with caplog.at_level(logging.WARNING, logger="nightmarenet.training.trainer"):
-            trainer2.train(
-                train_dataloader=loader,
-                dream_dataloader=loader,
-                nightmare_dataloader=loader,
-                val_dataloader=loader,
-                on_progress=on_progress
-            )
-    finally:
-        logger.setLevel(old_level)
-        logger.propagate = old_propagate
+    import unittest.mock as mock
+
+    from nightmarenet.training.trainer import logger as trainer_logger
+
+    with mock.patch.object(trainer_logger, "warning") as mock_warning:
+        trainer2.train(
+            train_dataloader=loader,
+            dream_dataloader=loader,
+            nightmare_dataloader=loader,
+            val_dataloader=loader,
+            on_progress=on_progress
+        )
 
     # Verify warning was logged
-    assert "Optimizer param group count mismatch" in caplog.text
+    mock_warning.assert_called_once()
+    call_args = mock_warning.call_args[0]
+    assert "Optimizer param group count mismatch" in call_args[0]
 
 
 def test_checkpoint_version_compatibility(minimal_config, shared_model_and_tokenizer):
