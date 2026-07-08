@@ -19,14 +19,15 @@ Thank you for helping improve NightmareNet. This project uses a **research-first
 1. [Before you start](#before-you-start)
 2. [Opening issues](#opening-issues)
 3. [Issue assignment rules](#issue-assignment-rules)
-4. [Local development setup](#1-local-development-setup)
-5. [Architecture pointers (OSS core vs hosted platform)](#2-architecture-pointers)
-6. [Adding a new distortion](#3-adding-a-new-distortion)
-7. [Coding standards](#4-coding-standards)
-8. [Documentation](#5-documentation)
-9. [PR checklist](#6-pr-checklist)
-10. [ECSoC'26 Contributors](#8-ecsoc26-contributors)
-11. [Where to ask for help](#9-where-to-ask-for-help)
+4. [Code philosophy](#code-philosophy)
+5. [Local development setup](#1-local-development-setup)
+6. [Architecture pointers](#2-architecture-pointers)
+7. [Adding a new distortion](#3-adding-a-new-distortion)
+8. [Coding standards](#4-coding-standards)
+9. [Documentation](#5-documentation)
+10. [PR checklist](#6-pr-checklist)
+11. [ECSoC'26 Contributors](#7-ecsoc26-contributors)
+12. [Where to ask for help](#8-where-to-ask-for-help)
 
 ---
 
@@ -397,7 +398,7 @@ CI mirrors the local checks plus a security scan. Merging is blocked on a green 
 
 ---
 
-## 8. ECSoC'26 Contributors
+## 7. ECSoC'26 Contributors
 
 This section applies to contributors participating in the **ECSoC'26** open-source track.
 
@@ -441,7 +442,7 @@ These are applied by maintainers at merge time based on quality. **Do not reques
 
 ---
 
-## 9. Where to ask for help
+## 8. Where to ask for help
 
 - **GitHub Discussions** — `https://github.com/Adit-Jain-srm/NightmareNet/discussions`
   - `q-and-a` for "how do I..." questions
