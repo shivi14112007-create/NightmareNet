@@ -18,7 +18,6 @@ from nightmarenet.data.generator import create_generators_from_config
 from nightmarenet.data.ingest import DataIngestor
 from nightmarenet.distortions.text import apply_text_distortions
 from nightmarenet.evaluation.evaluator import Evaluator
-from nightmarenet.evaluation.metrics import quick_robustness_score
 from nightmarenet.training.trainer import Trainer, _tokenize_dataset
 from nightmarenet.utils.config import load_config
 from nightmarenet.utils.telemetry import record_metric, setup_telemetry, trace_phase
@@ -181,7 +180,7 @@ class Pipeline:
           metrics["cycle"] = event.get("cycle", 0)
           self.metrics.per_cycle_metrics.append(metrics)
           self._emit()
-        except Exception:
+       except Exception:
           logger.exception("Per-cycle evaluation failed; continuing training.")
 
       if self._trainer is None:
@@ -860,25 +859,3 @@ def create_pipeline_from_config(
     """
     config = load_config(config_path)
     return Pipeline(config=config, on_event=on_event)
-def evaluate_cycle(
-    model,
-    dataloader,
-):
-    accuracy = compute_accuracy(
-        model,
-        dataloader,
-    )
-
-    robustness = {}
-
-    for strength in [0.3, 0.5, 0.7]:
-        robustness[strength] = quick_robustness_score(
-            model=model,
-            dataloader=dataloader,
-            strength=strength,
-        )
-
-    return {
-        "accuracy": accuracy,
-        "robustness": robustness,
-    }
