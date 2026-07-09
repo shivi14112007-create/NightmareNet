@@ -13,6 +13,8 @@ from typing import Optional
 from datasets import Dataset, IterableDataset
 
 from nightmarenet.distortions.adversarial import apply_adversarial_distortions
+from nightmarenet.distortions.loader import load_custom_engine
+from nightmarenet.distortions.registry import get_registry
 from nightmarenet.distortions.semantic import apply_semantic_distortions
 from nightmarenet.distortions.text import apply_text_distortions
 from nightmarenet.utils.validation import (
@@ -55,9 +57,30 @@ class DreamDatasetGenerator:
         if not text or not text.strip():
             return example
 
+        result = text
+
+        # Apply custom engines from config if specified
+        custom_engines = self.config.get("custom_engines", [])
+        if custom_engines:
+            registry = get_registry()
+            for engine_config in custom_engines:
+                engine_name = engine_config.get("engine")
+                engine_strength = engine_config.get("strength", self.strength)
+
+                # Handle custom: prefix for file-based engines
+                if engine_name and engine_name.startswith("custom:"):
+                    loaded_name = load_custom_engine(engine_name, registry)
+                    if loaded_name:
+                        engine_name = loaded_name
+
+                if engine_name and engine_name in registry:
+                    result = registry.apply(
+                        engine_name, result, strength=engine_strength, seed=self.seed
+                    )
+
         # Apply text-level corruptions (primary for dream phase)
         text_config = self.config.get("text", None)
-        result = apply_text_distortions(text, strength=self.strength, config=text_config)
+        result = apply_text_distortions(result, strength=self.strength, config=text_config)
 
         # Apply light semantic distortions
         semantic_config = self.config.get("semantic", None)
@@ -175,9 +198,30 @@ class NightmareDatasetGenerator:
         if not text or not text.strip():
             return example
 
+        result = text
+
+        # Apply custom engines from config if specified
+        custom_engines = self.config.get("custom_engines", [])
+        if custom_engines:
+            registry = get_registry()
+            for engine_config in custom_engines:
+                engine_name = engine_config.get("engine")
+                engine_strength = engine_config.get("strength", self.strength)
+
+                # Handle custom: prefix for file-based engines
+                if engine_name and engine_name.startswith("custom:"):
+                    loaded_name = load_custom_engine(engine_name, registry)
+                    if loaded_name:
+                        engine_name = loaded_name
+
+                if engine_name and engine_name in registry:
+                    result = registry.apply(
+                        engine_name, result, strength=engine_strength, seed=self.seed
+                    )
+
         # Apply aggressive text-level corruptions
         text_config = self.config.get("text", None)
-        result = apply_text_distortions(text, strength=self.strength, config=text_config)
+        result = apply_text_distortions(result, strength=self.strength, config=text_config)
 
         # Apply strong semantic distortions
         semantic_config = self.config.get("semantic", None)

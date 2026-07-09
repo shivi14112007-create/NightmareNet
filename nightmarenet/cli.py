@@ -309,22 +309,80 @@ def cmd_distort(args: argparse.Namespace) -> int:
         except Exception as e:
             print(f"Error executing preset: {e}", file=sys.stderr)
             return 1
+    from nightmarenet.distortions.registry import get_registry
 
     # Handle single engine distortion (original behavior)
     text = args.text
     strength = args.strength
 
-    if args.type == "dream":
-        result = dream.distort(text, strength=strength, seed=args.seed)
-    elif args.type == "nightmare":
-        result = nightmare.distort(text, strength=strength, seed=args.seed)
-    else:
-        print(f"Error: unknown distortion type: {args.type}", file=sys.stderr)
-        return 1
+    registry = get_registry()
 
-    print(f"Original:  {text}")
-    print(f"Distorted: {result}")
-    print(f"  Type: {args.type}, Strength: {strength}")
+    # Handle --list-engines
+    if getattr(args, "list_engines", False):
+        engines_by_source = registry.list_engines_by_source()
+
+        print("Available distortion engines:")
+
+        if engines_by_source.get("builtin"):
+            print("\nBuilt-in:")
+            for engine in engines_by_source["builtin"]:
+                pkg_info = f" [{engine.get('package', '')}]" if engine.get("package") else ""
+                print(
+                    f"  {engine['name']} ({engine.get('phase', 'unknown')}){pkg_info} "
+                    f"- {engine.get('description', '')}"
+                )
+
+        if engines_by_source.get("plugin"):
+            print("\nPlugins:")
+            for engine in engines_by_source["plugin"]:
+                pkg_info = f" [{engine.get('package', '')}]" if engine.get("package") else ""
+                print(
+                    f"  {engine['name']} ({engine.get('phase', 'unknown')}){pkg_info} "
+                    f"- {engine.get('description', '')}"
+                )
+
+        if engines_by_source.get("custom"):
+            print("\nCustom:")
+            for engine in engines_by_source["custom"]:
+                print(
+                    f"  {engine['name']} ({engine.get('phase', 'unknown')}) "
+                    f"- {engine.get('description', '')}"
+                )
+
+        return 0
+
+    # Apply distortion
+    if args.engine:
+        # Use registry-based engine
+        if args.engine not in registry:
+            print(f"Error: unknown engine '{args.engine}'", file=sys.stderr)
+            print(f"Available: {', '.join(registry.engine_names)}", file=sys.stderr)
+            return 1
+
+        result = registry.apply(args.engine, text, strength=strength, seed=args.seed)
+        engine_meta = registry.get_engine_metadata(args.engine)
+        print(f"Original:  {text}")
+        print(f"Distorted: {result}")
+        print(
+            f"  Engine: {args.engine}, Phase: {engine_meta.get('phase', 'unknown')}, "
+            f"Strength: {strength}"
+        )
+    else:
+        # Legacy behavior for backward compatibility
+        from nightmarenet.distortions import dream, nightmare
+
+        if args.type == "dream":
+            result = dream.distort(text, strength=strength, seed=args.seed)
+        elif args.type == "nightmare":
+            result = nightmare.distort(text, strength=strength, seed=args.seed)
+        else:
+            print(f"Error: unknown distortion type: {args.type}", file=sys.stderr)
+            return 1
+
+        print(f"Original:  {text}")
+        print(f"Distorted: {result}")
+        print(f"  Type: {args.type}, Strength: {strength}")
+
     return 0
 
 
@@ -524,6 +582,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--list-presets", action="store_true", help="List available preset chains"
     )
     distort_parser.add_argument("--validate", help="Validate a preset YAML file")
+        help="Legacy distortion type (use --engine instead)",
+    )
+    distort_parser.add_argument(
+        "--engine", help="Distortion engine name (use --list-engines to see available)"
+    )
+    distort_parser.add_argument(
+        "--list-engines", action="store_true", help="List all available distortion engines"
+    )
+    distort_parser.add_argument("--strength", type=float, default=0.3)
+    distort_parser.add_argument("--text", required=True)
+    distort_parser.add_argument("--seed", type=int, default=None)
 
     # foundation
     foundation_parser = subparsers.add_parser("foundation", help="Manage foundation models")
