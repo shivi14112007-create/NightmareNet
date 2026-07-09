@@ -15,7 +15,15 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 def validate_webhook_url(url: str) -> bool:
-    """Validate webhook URL against an allowlist and block internal IPs."""
+    """Validate a webhook URL against the allowlist and block internal IPs.
+
+    Args:
+        url: The webhook URL to validate. Must be HTTPS and resolve to
+            a public (non-private, non-loopback) IP address.
+
+    Returns:
+        True if the URL passes all validation checks, False otherwise.
+    """
     try:
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme != "https":
@@ -25,9 +33,9 @@ def validate_webhook_url(url: str) -> bool:
         if not hostname:
             return False
 
-        # Allowlist check
+        # Allowlist check with path restrictions
         allowed = False
-        if hostname == "hooks.slack.com":
+        if hostname == "hooks.slack.com" and parsed.path.startswith("/services/"):
             allowed = True
         elif hostname in ("discord.com", "discordapp.com") and parsed.path.startswith(
             "/api/webhooks/"
@@ -39,11 +47,20 @@ def validate_webhook_url(url: str) -> bool:
         if not allowed:
             return False
 
-        # Resolve IP and block internal
-        ip_addr = socket.gethostbyname(hostname)
-        ip = ipaddress.ip_address(ip_addr)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast:
+        # Resolve all addresses and reject if any is non-global
+        try:
+            addr_infos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC)
+        except socket.gaierror:
             return False
+
+        if not addr_infos:
+            return False
+
+        for addr_info in addr_infos:
+            ip_str = addr_info[4][0]
+            ip = ipaddress.ip_address(ip_str)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast:
+                return False
 
         return True
     except Exception:
