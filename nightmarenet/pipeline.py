@@ -23,7 +23,7 @@ from nightmarenet.training.trainer import Trainer, _tokenize_dataset
 from nightmarenet.utils.config import load_config
 from nightmarenet.utils.telemetry import record_metric, setup_telemetry, trace_phase
 from nightmarenet.utils.webhooks import trigger_webhook
-
+from nightmarenet.evaluation.metrics import quick_robustness_score, evaluate_cycle
 logger = logging.getLogger(__name__)
 
 
@@ -59,6 +59,7 @@ class PipelineMetrics:
     report_md: Optional[str] = None
     adaption_quality: Optional[dict] = None
     quality_feedback: Optional[dict] = None
+    per_cycle_metrics: list[dict] = field(default_factory=list)   # <-- add this, remove the duplicate `history` line
 
     def to_dict(self) -> dict:
         return {
@@ -70,6 +71,7 @@ class PipelineMetrics:
             "progress_pct": round(self.progress_pct, 2),
             "eta_seconds": round(self.eta_seconds, 1),
             "history": self.history,
+            "per_cycle_metrics": self.per_cycle_metrics,   # <-- expose to dashboard
             "error": self.error,
             "has_report": self.report_md is not None,
         }
@@ -162,46 +164,60 @@ class Pipeline:
         )
 
     def _handle_cycle_end(self, event: dict) -> None:
-        """Handle adaptive convergence detection after each training cycle."""
-        if self._trainer is None:
-            return
-        training_cfg = self.config.get("training", {})
-        auto_terminate = training_cfg.get("auto_terminate", False)
-        threshold = training_cfg.get("convergence_threshold", 0.005)
-        patience = training_cfg.get("convergence_patience", 2)
-        if auto_terminate:
-            score = quick_robustness_score(
-                model=self._trainer.model,
-                base_dataset=self._dataset,
-                tokenizer=self._trainer.tokenizer,
-                distortion_fn=apply_text_distortions,
-                strength=0.5,
-                text_column=self.config.get("dataset", {}).get("text_column", "text"),
-                max_length=self.config.get("model", {}).get("max_length", 128),
-                batch_size=training_cfg.get("batch_size", 8),
-                device=str(self._trainer.device),
-            )
-            if self._last_robustness_score is None:
-                self._last_robustness_score = score
-                self._cycles_completed = event.get("cycle", 0) + 1
+      """Handle per-cycle evaluation and adaptive convergence detection."""
+      if self._trainer is not None and self._train_dl is not None:
+        metrics = evaluate_cycle(
+            model=self._trainer.model,
+            dataloader=self._train_dl,
+            tokenizer=self._trainer.tokenizer,
+            base_dataset=self._dataset,
+            distortion_fn=apply_text_distortions,
+            text_column=self.config.get("dataset", {}).get("text_column", "text"),
+            max_length=self.config.get("model", {}).get("max_length", 128),
+            batch_size=self.config.get("training", {}).get("batch_size", 8),
+            device=str(self._trainer.device),
+        )
+        metrics["cycle"] = event.get("cycle", 0)
+        self.metrics.per_cycle_metrics.append(metrics)
+        self._emit()
+
+      if self._trainer is None:
+        return
+      training_cfg = self.config.get("training", {})
+      auto_terminate = training_cfg.get("auto_terminate", False)
+      threshold = training_cfg.get("convergence_threshold", 0.005)
+      patience = training_cfg.get("convergence_patience", 2)
+      if auto_terminate:
+        score = quick_robustness_score(
+            model=self._trainer.model,
+            base_dataset=self._dataset,
+            tokenizer=self._trainer.tokenizer,
+            distortion_fn=apply_text_distortions,
+            strength=0.5,
+            text_column=self.config.get("dataset", {}).get("text_column", "text"),
+            max_length=self.config.get("model", {}).get("max_length", 128),
+            batch_size=training_cfg.get("batch_size", 8),
+            device=str(self._trainer.device),
+        )
+        if self._last_robustness_score is None:
+            self._last_robustness_score = score
+            self._cycles_completed = event.get("cycle", 0) + 1
+        else:
+            delta = abs(score - self._last_robustness_score)
+            self._final_convergence_delta = delta
+            if delta < threshold:
+                self._convergence_count += 1
             else:
-                delta = abs(score - self._last_robustness_score)
-                self._final_convergence_delta = delta
-                if delta < threshold:
-                    self._convergence_count += 1
-                else:
-                    self._convergence_count = 0
-                self._last_robustness_score = score
-                self._cycles_completed = event.get("cycle", 0) + 1
-                if ( self._convergence_count >= patience
-                    and self._trainer is not None
-                ):
-                    logger.info(
-                        "Robustness converged after %d cycles (delta=%.6f).",
-                        self._cycles_completed,
-                        delta,
-                    )
-                    self._trainer.request_stop()
+                self._convergence_count = 0
+            self._last_robustness_score = score
+            self._cycles_completed = event.get("cycle", 0) + 1
+            if self._convergence_count >= patience and self._trainer is not None:
+                logger.info(
+                    "Robustness converged after %d cycles (delta=%.6f).",
+                    self._cycles_completed,
+                    delta,
+                )
+                self._trainer.request_stop()
 
     def cancel(self) -> None:
         """Request graceful cancellation of a running pipeline."""
@@ -841,3 +857,25 @@ def create_pipeline_from_config(
     """
     config = load_config(config_path)
     return Pipeline(config=config, on_event=on_event)
+def evaluate_cycle(
+    model,
+    dataloader,
+):
+    accuracy = compute_accuracy(
+        model,
+        dataloader,
+    )
+
+    robustness = {}
+
+    for strength in [0.3, 0.5, 0.7]:
+        robustness[strength] = quick_robustness_score(
+            model=model,
+            dataloader=dataloader,
+            strength=strength,
+        )
+
+    return {
+        "accuracy": accuracy,
+        "robustness": robustness,
+    }

@@ -142,6 +142,50 @@ def quick_robustness_score(
     except Exception as e:
         logger.warning("Error during quick robustness computation: %s", e)
         return 0.0
+    
+def evaluate_cycle(
+    model,
+    dataloader: DataLoader,
+    tokenizer,
+    base_dataset,
+    distortion_fn,
+    *,
+    text_column: str = "text",
+    max_length: int = 128,
+    batch_size: int = 8,
+    device="cpu",
+) -> dict:
+    """Lightweight per-cycle probe: clean accuracy + robustness at 3 strengths.
+
+    Reuses recall_score() for accuracy and quick_robustness_score() for
+    robustness, keeping this cheap enough to run after every training cycle.
+    """
+    recall = recall_score(
+        model=model,
+        dataloader=dataloader,
+        tokenizer=tokenizer,
+        device=device,
+    )
+    accuracy = recall["token_accuracy"]
+
+    robustness = {}
+    for strength in (0.3, 0.5, 0.7):
+        robustness[strength] = quick_robustness_score(
+            model=model,
+            base_dataset=base_dataset,
+            tokenizer=tokenizer,
+            distortion_fn=distortion_fn,
+            strength=strength,
+            text_column=text_column,
+            max_length=max_length,
+            batch_size=batch_size,
+            device=device,
+        )
+
+    return {
+        "accuracy": accuracy,
+        "robustness": robustness,
+    }
 
 def recall_score(
     model,

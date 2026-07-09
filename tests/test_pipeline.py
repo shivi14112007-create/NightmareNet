@@ -271,3 +271,40 @@ class TestAdaptiveTermination:
         pipe = Pipeline(minimal_config)
 
         assert pipe.config["training"]["num_cycles"] == 1
+class TestPerCycleMetrics:
+    """Tests per-cycle evaluation via evaluate_cycle()."""
+
+    def test_per_cycle_metrics_appended(self, minimal_config):
+        pipe = Pipeline(minimal_config)
+        pipe._trainer = MagicMock()
+        pipe._trainer.model = MagicMock()
+        pipe._trainer.tokenizer = MagicMock()
+        pipe._trainer.device = "cpu"
+        pipe._dataset = MagicMock()
+        pipe._train_dl = MagicMock()
+
+        minimal_config["training"]["auto_terminate"] = False
+
+        with patch("nightmarenet.pipeline.evaluate_cycle") as mock_eval_cycle:
+            mock_eval_cycle.return_value = {
+                "accuracy": 0.85,
+                "robustness": {0.3: 0.8, 0.5: 0.7, 0.7: 0.6},
+            }
+            pipe._handle_cycle_end({"cycle": 0})
+
+            mock_eval_cycle.assert_called_once()
+            assert len(pipe.metrics.per_cycle_metrics) == 1
+            assert pipe.metrics.per_cycle_metrics[0]["cycle"] == 0
+            assert pipe.metrics.per_cycle_metrics[0]["accuracy"] == 0.85
+
+    def test_per_cycle_metrics_skipped_without_train_dl(self, minimal_config):
+        """No train_dl means the lightweight probe is skipped, not crashed."""
+        pipe = Pipeline(minimal_config)
+        pipe._trainer = MagicMock()
+        pipe._dataset = MagicMock()
+        # pipe._train_dl left as None
+
+        minimal_config["training"]["auto_terminate"] = False
+
+        pipe._handle_cycle_end({"cycle": 0})
+        assert pipe.metrics.per_cycle_metrics == []
