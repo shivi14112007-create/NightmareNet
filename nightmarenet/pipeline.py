@@ -166,7 +166,8 @@ class Pipeline:
     def _handle_cycle_end(self, event: dict) -> None:
       """Handle per-cycle evaluation and adaptive convergence detection."""
       if self._trainer is not None and self._train_dl is not None:
-        metrics = evaluate_cycle(
+       try:
+          metrics = evaluate_cycle(
             model=self._trainer.model,
             dataloader=self._train_dl,
             tokenizer=self._trainer.tokenizer,
@@ -176,10 +177,12 @@ class Pipeline:
             max_length=self.config.get("model", {}).get("max_length", 128),
             batch_size=self.config.get("training", {}).get("batch_size", 8),
             device=str(self._trainer.device),
-        )
-        metrics["cycle"] = event.get("cycle", 0)
-        self.metrics.per_cycle_metrics.append(metrics)
-        self._emit()
+          )
+          metrics["cycle"] = event.get("cycle", 0)
+          self.metrics.per_cycle_metrics.append(metrics)
+          self._emit()
+        except Exception:
+          logger.exception("Per-cycle evaluation failed; continuing training.")
 
       if self._trainer is None:
         return
