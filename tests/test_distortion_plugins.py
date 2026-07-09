@@ -17,7 +17,6 @@ from nightmarenet.distortions.validators import (
 
 def test_validate_distortion_contract_valid() -> None:
     """Test contract validation with a valid function."""
-
     def valid_distort(text: str, strength: float, seed: int = None) -> str:
         if strength == 0.0:
             return text
@@ -29,7 +28,6 @@ def test_validate_distortion_contract_valid() -> None:
 
 def test_validate_distortion_contract_empty_input() -> None:
     """Test that empty input must return empty."""
-
     def invalid_distort(text: str, strength: float, seed: int = None) -> str:
         return "not empty"
 
@@ -40,7 +38,6 @@ def test_validate_distortion_contract_empty_input() -> None:
 
 def test_validate_distortion_contract_strength_zero() -> None:
     """Test that strength=0.0 should be approximately no-op."""
-
     def invalid_distort(text: str, strength: float, seed: int = None) -> str:
         return text.upper()  # Always upper, not no-op at strength=0
 
@@ -64,7 +61,6 @@ def test_validate_distortion_contract_determinism() -> None:
 
 def test_validate_base_distortion_valid() -> None:
     """Test BaseDistortion validation with a valid class."""
-
     class ValidPlugin(BaseDistortion):
         name = "valid_plugin"
         phase = "custom"
@@ -79,7 +75,6 @@ def test_validate_base_distortion_valid() -> None:
 
 def test_validate_base_distortion_missing_name() -> None:
     """Test BaseDistortion validation with missing name."""
-
     class InvalidPlugin(BaseDistortion):
         name = ""
         phase = "custom"
@@ -95,7 +90,6 @@ def test_validate_base_distortion_missing_name() -> None:
 
 def test_validate_base_distortion_not_subclass() -> None:
     """Test BaseDistortion validation with non-subclass."""
-
     class NotAPlugin:
         pass
 
@@ -106,7 +100,6 @@ def test_validate_base_distortion_not_subclass() -> None:
 
 def test_validate_distortion_function() -> None:
     """Test the testing.py helper for functions."""
-
     def my_distort(text: str, strength: float, seed: int = None) -> str:
         return text
 
@@ -116,7 +109,6 @@ def test_validate_distortion_function() -> None:
 
 def test_validate_distortion_plugin() -> None:
     """Test the testing.py helper for BaseDistortion classes."""
-
     class MyPlugin(BaseDistortion):
         name = "my_plugin"
         phase = "custom"

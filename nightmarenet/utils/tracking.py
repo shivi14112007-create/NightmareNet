@@ -62,7 +62,9 @@ class ExperimentTracker:
                 self._writer = SummaryWriter(log_dir=log_dir)
                 logger.info("TensorBoard tracking initialized (log_dir=%s).", log_dir)
             except ImportError:
-                logger.warning("tensorboard not installed; falling back to no-op tracker.")
+                logger.warning(
+                    "tensorboard not installed; falling back to no-op tracker."
+                )
                 self.backend = "none"
 
         elif self.backend != "none":

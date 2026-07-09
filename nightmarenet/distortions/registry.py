@@ -80,18 +80,12 @@ class DistortionRegistry:
                 cls = ep.load()
                 instance = cls()
                 if isinstance(instance, BaseDistortion) and instance.validate():
-                    self.register(
-                        instance.name,
-                        instance.distort,
-                        metadata={
-                            "phase": instance.phase,
-                            "description": instance.description,
-                            "source": "plugin",
-                            "package": ep.dist.name
-                            if hasattr(ep, "dist") and ep.dist
-                            else "unknown",
-                        },
-                    )
+                    self.register(instance.name, instance.distort, metadata={
+                        'phase': instance.phase,
+                        'description': instance.description,
+                        'source': 'plugin',
+                        'package': ep.dist.name if hasattr(ep, 'dist') and ep.dist else 'unknown',
+                    })
                     logger.info(f"Loaded distortion plugin '{ep.name}' from {ep.value}")
             except Exception as e:
                 logger.warning(f"Failed to load distortion plugin '{ep.name}': {e}")
@@ -129,7 +123,8 @@ class DistortionRegistry:
     def list_engines(self) -> List[Dict[str, Any]]:
         """List all registered distortion engines with metadata."""
         return [
-            {"name": name, **self._metadata.get(name, {})} for name in sorted(self._engines.keys())
+            {"name": name, **self._metadata.get(name, {})}
+            for name in sorted(self._engines.keys())
         ]
 
     def list_engines_by_source(self) -> Dict[str, List[Dict[str, Any]]]:
@@ -159,19 +154,13 @@ class DistortionRegistry:
             def my_distortion(text: str, strength: float, seed: int = None) -> str:
                 return text
         """
-
         def decorator(fn: DistortionFn) -> DistortionFn:
-            self.register(
-                name,
-                fn,
-                metadata={
-                    "phase": phase,
-                    "description": description,
-                    "source": "custom",
-                },
-            )
+            self.register(name, fn, metadata={
+                'phase': phase,
+                'description': description,
+                'source': 'custom',
+            })
             return fn
-
         return decorator
 
     @property

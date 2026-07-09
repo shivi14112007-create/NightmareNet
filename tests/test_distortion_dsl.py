@@ -22,8 +22,10 @@ def test_chain_config_schema_validation():
         "name": "test_chain",
         "description": "Test chain",
         "version": 1,
-        "chain": [{"engine": "dream", "strength": 0.3, "condition": "always"}],
-        "defaults": {"seed": 42, "preserve_length": False, "max_retries": 3},
+        "chain": [
+            {"engine": "dream", "strength": 0.3, "condition": "always"}
+        ],
+        "defaults": {"seed": 42, "preserve_length": False, "max_retries": 3}
     }
     config = ChainConfig(**config_data)
     assert config.name == "test_chain"
@@ -63,7 +65,7 @@ chain:
 defaults:
   seed: 42
 """
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(yaml_content)
         temp_path = f.name
     config = parse_chain_config(temp_path, validate_engines=False)
@@ -76,7 +78,7 @@ def test_parse_chain_config_invalid_yaml():
     """Test that invalid YAML is rejected."""
     import yaml
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write("invalid: yaml: content: [")
         temp_path = f.name
     with pytest.raises(yaml.YAMLError):
@@ -92,7 +94,7 @@ chain:
   - engine: nonexistent_engine
     strength: 0.3
 """
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(yaml_content)
         temp_path = f.name
     with pytest.raises(ValueError, match="Unknown engine"):
@@ -108,7 +110,7 @@ chain:
   - engine: dream
     strength: 0.3
 """
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(yaml_content)
         temp_path = f.name
     is_valid, message = validate_chain_config(temp_path)
@@ -119,7 +121,7 @@ chain:
 
 def test_validate_chain_config_invalid():
     """Test validation with invalid config."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write("invalid: [")
         temp_path = f.name
     is_valid, message = validate_chain_config(temp_path)
@@ -173,7 +175,8 @@ def test_chain_executor_condition_invalid():
 def test_chain_executor_single_step():
     """Test executing a single-step chain."""
     config = ChainConfig(
-        name="test", chain=[ChainStep(engine="dream", strength=0.3, condition="always")]
+        name="test",
+        chain=[ChainStep(engine="dream", strength=0.3, condition="always")]
     )
     executor = ChainExecutor()
     text = "The quick brown fox"
@@ -189,7 +192,7 @@ def test_chain_executor_multiple_steps():
         chain=[
             ChainStep(engine="dream", strength=0.2, condition="always"),
             ChainStep(engine="dream", strength=0.3, condition="always"),
-        ],
+        ]
     )
     executor = ChainExecutor()
     text = "The quick brown fox"
@@ -204,7 +207,7 @@ def test_chain_executor_condition_skipping():
         chain=[
             ChainStep(engine="dream", strength=0.2, condition="always"),
             ChainStep(engine="dream", strength=0.3, condition="strength > 0.8"),
-        ],
+        ]
     )
     executor = ChainExecutor()
     text = "The quick brown fox"
@@ -219,7 +222,7 @@ def test_chain_executor_determinism():
         name="test",
         chain=[
             ChainStep(engine="dream", strength=0.3, condition="always"),
-        ],
+        ]
     )
     executor = ChainExecutor()
     text = "The quick brown fox"
@@ -236,7 +239,7 @@ def test_chain_executor_with_trace():
         name="test",
         chain=[
             ChainStep(engine="dream", strength=0.3, condition="always"),
-        ],
+        ]
     )
     executor = ChainExecutor()
     text = "The quick brown fox"
@@ -290,7 +293,7 @@ def test_chain_executor_failed_step_continues():
             ChainStep(engine="dream", strength=0.2, condition="always"),
             ChainStep(engine="failing", strength=0.3, condition="always"),
             ChainStep(engine="dream", strength=0.2, condition="always"),
-        ],
+        ]
     )
 
     executor = ChainExecutor(registry=registry)

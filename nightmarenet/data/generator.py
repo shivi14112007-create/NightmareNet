@@ -160,7 +160,9 @@ class DreamDatasetGenerator:
             os.makedirs(save_path, exist_ok=True)
             dream_data.save_to_disk(save_path)
         except OSError as exc:
-            raise OSError(f"Failed to save dream data to '{save_path}': {exc}") from exc
+            raise OSError(
+                f"Failed to save dream data to '{save_path}': {exc}"
+            ) from exc
         logger.info("Dream data saved to %s", save_path)
         return dream_data
 
@@ -223,7 +225,9 @@ class NightmareDatasetGenerator:
 
         # Apply strong semantic distortions
         semantic_config = self.config.get("semantic", None)
-        result = apply_semantic_distortions(result, strength=self.strength, config=semantic_config)
+        result = apply_semantic_distortions(
+            result, strength=self.strength, config=semantic_config
+        )
 
         # Apply adversarial distortions (unique to nightmare phase)
         adversarial_config = self.config.get("adversarial", None)
@@ -303,7 +307,9 @@ class NightmareDatasetGenerator:
             os.makedirs(save_path, exist_ok=True)
             nightmare_data.save_to_disk(save_path)
         except OSError as exc:
-            raise OSError(f"Failed to save nightmare data to '{save_path}': {exc}") from exc
+            raise OSError(
+                f"Failed to save nightmare data to '{save_path}': {exc}"
+            ) from exc
         logger.info("Nightmare data saved to %s", save_path)
         return nightmare_data
 

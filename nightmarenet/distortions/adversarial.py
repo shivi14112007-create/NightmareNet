@@ -118,16 +118,8 @@ def inject_contradiction(text, strength=0.3) -> str:
 
             # Simple negation: insert "not" or flip key words
             negation_targets = {
-                "is",
-                "are",
-                "was",
-                "were",
-                "will",
-                "can",
-                "has",
-                "have",
-                "does",
-                "do",
+                "is", "are", "was", "were",
+                "will", "can", "has", "have", "does", "do",
             }
             inserted = False
             for i, w in enumerate(negated_words):

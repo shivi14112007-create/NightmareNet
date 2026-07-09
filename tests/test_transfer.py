@@ -86,7 +86,6 @@ def test_transfer_pipeline_integration(mock_head_cls, mock_tokenizer, mock_autom
     mock_head_cls.return_value = mock_head
 
     from nightmarenet.transfer.head_factory import create_transfer_model
-
     model = create_transfer_model(str(dest), task_type="seq_classification", num_labels=2)
     assert model == mock_head
     mock_head_cls.assert_called_with(str(dest), num_labels=2)
@@ -99,7 +98,7 @@ def test_transfer_pipeline_integration(mock_head_cls, mock_tokenizer, mock_autom
         {
             "input_ids": torch.zeros((1, 128), dtype=torch.long),
             "attention_mask": torch.ones((1, 128), dtype=torch.long),
-            "labels": torch.zeros(1, dtype=torch.long),
+            "labels": torch.zeros(1, dtype=torch.long)
         }
     ]
     dataloader = DataLoader(dummy_data, batch_size=1, collate_fn=default_data_collator)

@@ -48,7 +48,10 @@ from nightmarenet.utils.validation import (
 
 SEED = 42
 
-SAMPLE_TEXT = "The quick brown fox jumps over the lazy dog. Paris is the capital of France."
+SAMPLE_TEXT = (
+    "The quick brown fox jumps over the lazy dog. "
+    "Paris is the capital of France."
+)
 
 UNICODE_TEXT = "日本語テスト 🎉🚀 Ñoño café résumé naïve"
 
@@ -62,7 +65,6 @@ def _make_dataset(texts: list[str], col: str = "text") -> Dataset:
 # ---------------------------------------------------------------------------
 # 1. Validation Edge Cases
 # ---------------------------------------------------------------------------
-
 
 class TestValidation:
     """Edge cases for every validator in nightmarenet.utils.validation."""
@@ -216,7 +218,6 @@ class TestValidation:
 # 2. Config Edge Cases
 # ---------------------------------------------------------------------------
 
-
 class TestConfig:
     """Edge cases for config loading, validation, and merging."""
 
@@ -253,7 +254,6 @@ class TestConfig:
 # ---------------------------------------------------------------------------
 # 3. Distortion Boundary Cases
 # ---------------------------------------------------------------------------
-
 
 class TestDistortionEdgeCases:
     """Edge cases for text, semantic, and adversarial distortions."""
@@ -352,7 +352,6 @@ class TestDistortionEdgeCases:
 # 4. Generator Edge Cases
 # ---------------------------------------------------------------------------
 
-
 class TestGeneratorEdgeCases:
     """Edge cases for DreamDatasetGenerator and NightmareDatasetGenerator."""
 
@@ -397,7 +396,6 @@ class TestGeneratorEdgeCases:
 # ---------------------------------------------------------------------------
 # 5. Scheduler Edge Cases
 # ---------------------------------------------------------------------------
-
 
 class TestSchedulerEdgeCases:
     """Edge cases for CyclicScheduler and AdaptiveScheduler."""
@@ -445,7 +443,6 @@ class TestSchedulerEdgeCases:
 # 6. Logging Edge Cases
 # ---------------------------------------------------------------------------
 
-
 class TestLogging:
     """Edge cases for setup_logging and reset_logging."""
 
@@ -467,7 +464,6 @@ class TestLogging:
 # ---------------------------------------------------------------------------
 # 7. Integration Test
 # ---------------------------------------------------------------------------
-
 
 class TestIntegration:
     """Full pipeline: config → generators → dream data → nightmare data."""

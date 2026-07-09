@@ -16,7 +16,10 @@ from transformers import AutoModel, AutoTokenizer, PreTrainedModel, PreTrainedTo
 logger = logging.getLogger(__name__)
 
 DEFAULT_FOUNDATION_DIR = Path(
-    os.getenv("NIGHTMARENET_FOUNDATION_DIR", str(Path.home() / ".nightmarenet" / "foundation"))
+    os.getenv(
+        "NIGHTMARENET_FOUNDATION_DIR",
+        str(Path.home() / ".nightmarenet" / "foundation")
+    )
 )
 
 
@@ -111,7 +114,6 @@ class FoundationRegistry:
 
 
 _default_registry = None
-
 
 def get_registry(cache_dir: Optional[str | Path] = None) -> FoundationRegistry:
     """Get the singleton registry instance."""

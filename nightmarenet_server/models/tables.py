@@ -21,7 +21,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), default="")
     avatar_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     memberships: Mapped[list["OrgMember"]] = relationship(back_populates="user")
 
@@ -32,7 +34,9 @@ class Org(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255))
     plan_tier: Mapped[str] = mapped_column(String(32), default="community")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     members: Mapped[list["OrgMember"]] = relationship(back_populates="org")
     projects: Mapped[list["Project"]] = relationship(back_populates="org")
@@ -56,7 +60,9 @@ class Project(Base):
     org_id: Mapped[str] = mapped_column(ForeignKey("orgs.id"), index=True)
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     org: Mapped["Org"] = relationship(back_populates="projects")
     experiments: Mapped[list["Experiment"]] = relationship(back_populates="project")
@@ -70,7 +76,9 @@ class Experiment(Base):
     name: Mapped[str] = mapped_column(String(255))
     config_json: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(String(32), default="idle", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     project: Mapped["Project"] = relationship(back_populates="experiments")
     runs: Mapped[list["Run"]] = relationship(back_populates="experiment")

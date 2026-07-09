@@ -37,7 +37,7 @@ class AtomicCheckpointer:
         optimizer: torch.optim.Optimizer,
         config: dict,
         metrics: Optional[dict] = None,
-        devices_used: Optional[list[int]] = None,
+        devices_used: Optional[list[int]] = None
     ) -> str:
         """Save state atomically and drop a .complete sentinel."""
         run_dir = os.path.join(self.base_dir, run_id)
@@ -66,13 +66,10 @@ class AtomicCheckpointer:
 
             # 3. RNG States
             rng_path = os.path.join(temp_dir, "rng_state.pt")
-            torch.save(
-                {
-                    "cpu": torch.get_rng_state(),
-                    "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
-                },
-                rng_path,
-            )
+            torch.save({
+                "cpu": torch.get_rng_state(),
+                "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else []
+            }, rng_path)
 
             # 4. Metadata and Config hash
             import time
@@ -82,21 +79,17 @@ class AtomicCheckpointer:
             meta_path = os.path.join(temp_dir, "metadata.json")
             file_hashes = compute_dir_hashes(temp_dir)
             with open(meta_path, "w") as f:
-                json.dump(
-                    {
-                        "version": app_version,
-                        "timestamp": time.time(),
-                        "created_at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
-                        "cycle": cycle,
-                        "phase": phase,
-                        "config_hash": compute_config_hash(config),
-                        "metrics": metrics or {},
-                        "devices_used": devices_used or [],
-                        "file_hashes": file_hashes,
-                    },
-                    f,
-                    indent=2,
-                )
+                json.dump({
+                    "version": app_version,
+                    "timestamp": time.time(),
+                    "created_at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+                    "cycle": cycle,
+                    "phase": phase,
+                    "config_hash": compute_config_hash(config),
+                    "metrics": metrics or {},
+                    "devices_used": devices_used or [],
+                    "file_hashes": file_hashes
+                }, f, indent=2)
 
             # Atomically rename
             os.rename(temp_dir, target_dir)
@@ -133,7 +126,6 @@ def load_model_weights(model: torch.nn.Module, checkpoint_dir: str, device: torc
         logger.info("Loading model safetensors from %s", model_safetensors)
         try:
             from safetensors.torch import load_file
-
             state_dict = load_file(model_safetensors, device=str(device))
             model_to_load.load_state_dict(state_dict, strict=False)
             return
@@ -228,7 +220,6 @@ def validate_checkpoint_integrity(checkpoint_dir: str, config: Optional[dict] = 
 
     # 2. Check version compatibility
     from nightmarenet import __version__ as app_version
-
     check_version_compatibility(metadata["version"], app_version)
 
     # 3. Check config hash if current config is provided
@@ -264,7 +255,9 @@ def validate_checkpoint_integrity(checkpoint_dir: str, config: Optional[dict] = 
                 raise ValueError(f"Checkpoint file recorded in metadata is missing: {relpath}")
             current_hash = compute_file_sha256(filepath)
             if current_hash != recorded_hash:
-                raise ValueError(f"Integrity check failed: Checksum mismatch for file '{relpath}'.")
+                raise ValueError(
+                    f"Integrity check failed: Checksum mismatch for file '{relpath}'."
+                )
         logger.info("Checksum validation passed successfully.")
     else:
         logger.warning("No file checksums found in checkpoint metadata. Skipping integrity check.")

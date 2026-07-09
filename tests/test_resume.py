@@ -15,7 +15,6 @@ from nightmarenet.training.trainer import Trainer
 def shared_model_and_tokenizer():
     """Returns a tiny GPT-2 model and tokenizer to keep tests fast and memory-efficient."""
     import transformers
-
     tokenizer = transformers.AutoTokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -48,7 +47,6 @@ def _tokenize_dataset(dataset: Dataset, tokenizer, max_length: int = 32):
             max_length=max_length,
             padding="max_length",
         )
-
     ds = dataset.map(tok_fn, batched=True, remove_columns=["text"])
     ds.set_format("torch")
     return ds
@@ -110,7 +108,7 @@ def test_scheduler_resume_offset():
         nightmare_epochs=1,
         compression_rounds=1,
         start_cycle=0,
-        start_phase="compress",
+        start_phase="compress"
     )
     phases = list(scheduler)
     # Remaining: Cycle 1 wake, dream, nightmare, compress; Cycle 2 wake, dream, nightmare, compress
@@ -125,7 +123,7 @@ def test_scheduler_resume_offset():
         nightmare_epochs=1,
         compression_rounds=1,
         start_cycle=1,
-        start_phase="dream",
+        start_phase="dream"
     )
     phases2 = list(scheduler2)
     # Remaining: Cycle 1 nightmare, compress; Cycle 2 wake, dream, nightmare, compress
@@ -191,7 +189,7 @@ def test_trainer_resume_execution(minimal_config, shared_model_and_tokenizer):
         train_dataloader=loader,
         dream_dataloader=loader,
         nightmare_dataloader=loader,
-        val_dataloader=loader,
+        val_dataloader=loader
     )
 
     # Verify training continued from dream phase of cycle 0 (index 1 of Cycle 0)
@@ -227,7 +225,6 @@ def test_trainer_resume_corrupted_phase(minimal_config, shared_model_and_tokeniz
     import json
 
     from nightmarenet.distributed.checkpoint import compute_file_sha256
-
     new_hash = compute_file_sha256(state_file)
     meta_path = os.path.join(path, "metadata.json")
     with open(meta_path) as f:
@@ -256,7 +253,7 @@ def test_trainer_resume_corrupted_phase(minimal_config, shared_model_and_tokeniz
             train_dataloader=loader,
             dream_dataloader=loader,
             nightmare_dataloader=loader,
-            val_dataloader=loader,
+            val_dataloader=loader
         )
 
 
@@ -301,7 +298,6 @@ def test_amp_scaler_save_load(minimal_config, shared_model_and_tokenizer):
     def mock_load_state_dict(sd):
         nonlocal loaded_scale
         loaded_scale = sd.get("scale")
-
     trainer2.scaler.load_state_dict = mock_load_state_dict
 
     # We mock loaders to trigger train load
@@ -313,7 +309,7 @@ def test_amp_scaler_save_load(minimal_config, shared_model_and_tokenizer):
         train_dataloader=loader,
         dream_dataloader=loader,
         nightmare_dataloader=loader,
-        val_dataloader=loader,
+        val_dataloader=loader
     )
 
     # Scale should be loaded from checkpoint
@@ -345,7 +341,7 @@ def test_chained_resume_execution(minimal_config, shared_model_and_tokenizer):
         dream_dataloader=loader,
         nightmare_dataloader=loader,
         val_dataloader=loader,
-        on_progress=on_progress1,
+        on_progress=on_progress1
     )
     assert len(trainer1.history) == 1
     assert trainer1.history[0]["phase"] == "wake"
@@ -371,7 +367,7 @@ def test_chained_resume_execution(minimal_config, shared_model_and_tokenizer):
         dream_dataloader=loader,
         nightmare_dataloader=loader,
         val_dataloader=loader,
-        on_progress=on_progress2,
+        on_progress=on_progress2
     )
     assert len(trainer2.history) == 2
     assert trainer2.history[0]["phase"] == "wake"
@@ -393,7 +389,7 @@ def test_chained_resume_execution(minimal_config, shared_model_and_tokenizer):
         train_dataloader=loader,
         dream_dataloader=loader,
         nightmare_dataloader=loader,
-        val_dataloader=loader,
+        val_dataloader=loader
     )
 
     # Total phases in 3 cycles is 12 (3 * 4)
@@ -419,7 +415,7 @@ def test_adaptive_scheduler_resume(minimal_config, shared_model_and_tokenizer):
     # Save checkpoint manually at cycle 0 dream
     trainer1.history = [
         {"phase": "wake", "avg_loss": 2.0, "cycle": 0},
-        {"phase": "dream", "avg_loss": 1.8, "cycle": 0},
+        {"phase": "dream", "avg_loss": 1.8, "cycle": 0}
     ]
     trainer1._save_checkpoint(cycle=0, phase="dream")
     checkpoint_path = os.path.join(trainer1.checkpoint_dir, "default_run", "cycle-0-dream")
@@ -448,7 +444,7 @@ def test_adaptive_scheduler_resume(minimal_config, shared_model_and_tokenizer):
         dream_dataloader=loader,
         nightmare_dataloader=loader,
         val_dataloader=loader,
-        on_progress=on_progress2,
+        on_progress=on_progress2
     )
 
     # Check that offsets propagated to base_scheduler
@@ -503,7 +499,7 @@ def test_optimizer_param_group_mismatch(minimal_config, shared_model_and_tokeniz
             dream_dataloader=loader,
             nightmare_dataloader=loader,
             val_dataloader=loader,
-            on_progress=on_progress,
+            on_progress=on_progress
         )
 
     # Verify warning was logged
@@ -517,7 +513,6 @@ def test_checkpoint_version_compatibility(minimal_config, shared_model_and_token
     import json
 
     from nightmarenet.distributed.checkpoint import validate_checkpoint_integrity
-
     model, tokenizer = shared_model_and_tokenizer
     trainer = Trainer(config=minimal_config, model=model, tokenizer=tokenizer)
     trainer.history = [{"phase": "wake", "avg_loss": 2.5, "cycle": 0}]
@@ -540,7 +535,6 @@ def test_checkpoint_version_compatibility(minimal_config, shared_model_and_token
 def test_checkpoint_checksum_integrity_validation(minimal_config, shared_model_and_tokenizer):
     """Test that modifying saved file contents triggers integrity validation failure."""
     from nightmarenet.distributed.checkpoint import validate_checkpoint_integrity
-
     model, tokenizer = shared_model_and_tokenizer
     trainer = Trainer(config=minimal_config, model=model, tokenizer=tokenizer)
     trainer.history = [{"phase": "wake", "avg_loss": 2.5, "cycle": 0}]

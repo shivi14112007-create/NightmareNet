@@ -1,5 +1,4 @@
 """End-to-end verification script — proves every Sprint deliverable boots."""
-
 import importlib.util
 import json
 import pathlib
@@ -31,18 +30,15 @@ def main() -> int:
     header("Hosted platform modules")
     try:
         import nightmarenet_server.tasks.celery_app as c
-
         members = [m for m in dir(c) if not m.startswith("_")]
         print(f"  celery_app exports: {members}")
         from nightmarenet_server.tasks.training import run_pipeline_task
-
         print(f"  run_pipeline_task callable: {callable(run_pipeline_task)}")
         from nightmarenet_server.realtime.websocket import (
             build_realtime_router,
             get_broker,
             publish_event,
         )
-
         ws_router = build_realtime_router()
         if ws_router is None:
             print("  websocket router: None (FastAPI/websockets optional dep missing)")
@@ -53,11 +49,9 @@ def main() -> int:
         print(f"  broker: {broker.__class__.__name__}")
         print(f"  publish_event callable: {callable(publish_event)}")
         import nightmarenet_server.auth.api_keys as ak
-
         ak_members = [m for m in dir(ak) if not m.startswith("_")]
         print(f"  api_keys exports: {ak_members}")
         import nightmarenet_server.auth.oauth as oa
-
         oa_members = [m for m in dir(oa) if not m.startswith("_")]
         print(f"  oauth exports: {oa_members}")
     except Exception as e:
@@ -67,7 +61,6 @@ def main() -> int:
     header("Hosted FastAPI app")
     try:
         from nightmarenet_server.app import app
-
         print(f"  Title: {app.title}")
         routes = []
         for r in app.routes:
@@ -96,7 +89,6 @@ def main() -> int:
     header("Pipeline orchestrator end-to-end (synthetic)")
     try:
         from nightmarenet.pipeline import Pipeline
-
         events = []
         cfg = {
             "model": {"name": "distilbert-base-uncased", "type": "seq_classification"},

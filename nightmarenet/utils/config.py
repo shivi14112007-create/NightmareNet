@@ -210,9 +210,13 @@ def validate_config(config: dict) -> list[str]:
         # Range check for numeric types
         if isinstance(value, (int, float)):
             if min_val is not None and value < min_val:
-                errors.append(f"Config '{dotted_key}' must be >= {min_val}, got {value}")
+                errors.append(
+                    f"Config '{dotted_key}' must be >= {min_val}, got {value}"
+                )
             if max_val is not None and value > max_val:
-                errors.append(f"Config '{dotted_key}' must be <= {max_val}, got {value}")
+                errors.append(
+                    f"Config '{dotted_key}' must be <= {max_val}, got {value}"
+                )
 
     webhooks = _get_nested(config, "notifications.webhooks")
     if webhooks is not None:
@@ -231,7 +235,9 @@ def validate_config(config: dict) -> list[str]:
                     errors.append(f"Config 'notifications.webhooks[{i}].url' must be a string")
                 if "events" in wh:
                     if not isinstance(wh["events"], list):
-                        errors.append(f"Config 'notifications.webhooks[{i}].events' must be a list")
+                        errors.append(
+                            f"Config 'notifications.webhooks[{i}].events' must be a list"
+                        )
                     else:
                         for j, ev in enumerate(wh["events"]):
                             if not isinstance(ev, str):
@@ -284,7 +290,8 @@ def load_config(path: str) -> dict:
 
     if not isinstance(user_config, dict):
         raise ValueError(
-            f"Config file must contain a YAML mapping, got {type(user_config).__name__}"
+            f"Config file must contain a YAML mapping,"
+            f" got {type(user_config).__name__}"
         )
 
     # Merge with defaults

@@ -82,13 +82,13 @@ def _evaluate_model_worker(
 
             accuracies = []
             for strength in strengths:
-
                 def distortion_fn(text, _s=strength, _dt=distortion_type):
                     return registry.apply(_dt, text, strength=_s, seed=42)
 
+
                 distorted = ds.map(
                     lambda x: {text_column: distortion_fn(x[text_column])},
-                    desc=f"Distorting {distortion_type} at strength {strength:.1f}",
+                    desc=f"Distorting {distortion_type} at strength {strength:.1f}"
                 )
 
                 def tokenize_fn(examples):
@@ -117,14 +117,13 @@ def _evaluate_model_worker(
                 accuracies.append(metrics.get("accuracy", 0.0))
 
             from sklearn.metrics import auc as sklearn_auc
-
             auc = float(sklearn_auc(strengths, accuracies))
             total_auc += auc
 
             results_by_distortion[distortion_type] = {
                 "strengths": strengths,
                 "accuracies": accuracies,
-                "auc": auc,
+                "auc": auc
             }
 
     except Exception as e:
@@ -220,7 +219,10 @@ class EnsembleOrchestrator:
 
                     # Save to cache
                     with open(cache_file, "w") as f:
-                        json.dump({"summary": summary, "results": model_results}, f)
+                        json.dump({
+                            "summary": summary,
+                            "results": model_results
+                        }, f)
 
                 except TimeoutError:
                     logger.error("Timeout exceeded for model %s", model_name)

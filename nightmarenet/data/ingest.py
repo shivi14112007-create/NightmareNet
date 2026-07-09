@@ -104,7 +104,10 @@ class DataIngestor:
         elif ext == ".jsonl":
             dataset = self._load_jsonl(path)
         else:
-            raise ValueError(f"Unsupported file extension '{ext}'. Supported: .txt, .csv, .jsonl")
+            raise ValueError(
+                f"Unsupported file extension '{ext}'. "
+                "Supported: .txt, .csv, .jsonl"
+            )
 
         return self._finalise(dataset, f"file({os.path.basename(path)})")
 
@@ -160,9 +163,7 @@ class DataIngestor:
             seed=self.seed,
             streaming=streaming,
         ).load()
-        if streaming:
-            return wrapper.train_data
-        return self._finalise(wrapper.train_data, f"huggingface({dataset_name})")
+        return wrapper.train_data
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -202,7 +203,9 @@ class DataIngestor:
                 if self.text_column in obj and obj[self.text_column]:
                     texts.append(str(obj[self.text_column]))
         if not texts:
-            raise ValueError(f"No valid entries with key '{self.text_column}' found in JSONL file.")
+            raise ValueError(
+                f"No valid entries with key '{self.text_column}' found in JSONL file."
+            )
         return Dataset.from_dict({self.text_column: texts})
 
     def _finalise(self, dataset: Dataset, source_label: str) -> Dataset:
@@ -222,8 +225,6 @@ class DataIngestor:
             dataset = dataset.select(range(self.max_samples))
 
         logger.info(
-            "Ingested %d samples from %s.",
-            len(dataset),
-            source_label,
+            "Ingested %d samples from %s.", len(dataset), source_label,
         )
         return dataset
