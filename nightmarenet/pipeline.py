@@ -124,11 +124,15 @@ class Pipeline:
         self._dream_base = None
         self._nightmare_base = None
         self._train_dl = None
+        self._eval_dl = None
         self._dream_dl = None
         self._nightmare_dl = None
         self._val_dl = None
         self._trainer: Optional[Trainer] = None
         self._baseline_model = None
+        # Held-out evaluation references (set during prepare())
+        self._eval_dataset = None
+        self._distortion_fn: Optional[Callable] = None
         # Adaptive cycle termination state
         self._last_robustness_score: Optional[float] = None
         self._convergence_count = 0
@@ -488,7 +492,44 @@ class Pipeline:
             try:
                 dream_gen, nightmare_gen = create_generators_from_config(self.config)
 
-                wake_data = self._wake_dataset if self._wake_dataset is not None else self._dataset
+                # ── Train / eval split ──────────────────────────────────────
+                # Reserve a held-out fraction for post-training evaluation so
+                # we do not measure performance on the same data we trained on.
+                _min_eval_samples = 25
+                eval_split_ratio = (
+                    self.config.get("evaluation", {})
+                    .get("eval_split_ratio", 0.2)
+                )
+                base_for_split = (
+                    self._wake_dataset if self._wake_dataset is not None else self._dataset
+                )
+                n_total = len(base_for_split)  # type: ignore[arg-type]
+
+                if eval_split_ratio > 0.0 and n_total >= _min_eval_samples:
+                    n_eval = max(1, int(n_total * eval_split_ratio))
+                    n_train = n_total - n_eval
+                    train_indices = list(range(n_train))
+                    eval_indices = list(range(n_train, n_total))
+                    wake_data = base_for_split.select(train_indices)
+                    self._eval_dataset = base_for_split.select(eval_indices)
+                    logger.info(
+                        "Train/eval split: %d train, %d eval (ratio=%.2f).",
+                        n_train, n_eval, eval_split_ratio,
+                    )
+                else:
+                    if eval_split_ratio > 0.0:
+                        logger.warning(
+                            "Dataset has only %d samples (minimum %d for splitting). "
+                            "Using full dataset for both training and evaluation.",
+                            n_total,
+                            _min_eval_samples,
+                        )
+                    wake_data = base_for_split
+                    self._eval_dataset = base_for_split
+
+                # Save reference distortion function for robustness evaluation
+                self._distortion_fn = apply_text_distortions
+
                 dream_base = self._dream_base if self._dream_base is not None else self._dataset
                 nightmare_base = (
                     self._nightmare_base if self._nightmare_base is not None else self._dataset
@@ -520,6 +561,10 @@ class Pipeline:
                     text_column,
                     max_length,
                     batch_size,
+                )
+                self._eval_dl = _tokenize_dataset(
+                    self._eval_dataset, self._trainer.tokenizer,
+                    text_column, max_length, batch_size,
                 )
                 self._dream_dl = _tokenize_dataset(
                     dream_data,
@@ -643,9 +688,16 @@ class Pipeline:
                     device=str(self._trainer.device),
                 )
 
+                # Use the held-out eval DataLoader so we never measure on
+                # training data; fall back to train_dl only if eval_dl is
+                # unavailable (should not happen in practice).
+                clean_dl = self._eval_dl if self._eval_dl is not None else self._train_dl
+
                 # Evaluate trained model
                 trained_results = evaluator.evaluate(
-                    clean_dataloader=self._train_dl,
+                    clean_dataloader=clean_dl,
+                    base_dataset=self._eval_dataset,
+                    distortion_fn=self._distortion_fn,
                     label="nightmarenet-trained",
                 )
                 self.metrics.trained_results = trained_results
@@ -658,7 +710,9 @@ class Pipeline:
                     device=str(self._trainer.device),
                 )
                 baseline_results = baseline_evaluator.evaluate(
-                    clean_dataloader=self._train_dl,
+                    clean_dataloader=clean_dl,
+                    base_dataset=self._eval_dataset,
+                    distortion_fn=self._distortion_fn,
                     label="baseline",
                 )
                 self.metrics.baseline_results = baseline_results

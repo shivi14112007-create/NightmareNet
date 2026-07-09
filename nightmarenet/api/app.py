@@ -988,12 +988,22 @@ _TEST_WEBHOOK_BODY = Body(...)
     summary="Send a test notification to a webhook URL",
     tags=["notifications"],
 )
+@limiter.limit("5/minute")
 async def test_webhook_endpoint(
     request: Request,
     body: TestWebhookRequest = _TEST_WEBHOOK_BODY,
 ):
     """Send a test notification payload to verify webhook integration."""
-    from nightmarenet.utils.webhooks import trigger_webhook
+    from nightmarenet.utils.webhooks import trigger_webhook, validate_webhook_url
+
+    if not validate_webhook_url(body.url):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid webhook URL. Must be an allowed HTTPS domain"
+                " and not resolve to an internal IP."
+            )
+        )
 
     # Temporary configuration dict containing the target webhook
     temp_config = {

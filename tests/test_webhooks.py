@@ -1,124 +1,115 @@
-"""Unit tests for the NightmareNet webhook notification system."""
+"""Tests for webhook validation and blocked internal IPs."""
 
 from __future__ import annotations
 
-import json
-import urllib.error
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from fastapi.testclient import TestClient
+import pytest
 
-from nightmarenet.api.app import app
-from nightmarenet.utils.config import validate_config
-from nightmarenet.utils.webhooks import _send_webhook_request
-
-client = TestClient(app)
+from nightmarenet.utils.webhooks import validate_webhook_url
 
 
-def test_config_validation_valid():
-    """Verify that a valid notifications config passes validation."""
-    valid_cfg = {
-        "model": {"name": "gpt2", "type": "causal_lm", "max_length": 128, "device": "cpu"},
-        "dataset": {"name": "wikitext", "text_column": "text"},
-        "training": {
-            "wake_epochs": 1,
-            "dream_epochs": 1,
-            "nightmare_epochs": 1,
-            "num_cycles": 1,
-            "compression_rounds": 0,
-            "batch_size": 4,
-            "learning_rate": 5e-5,
-            "nightmare_lr_multiplier": 1.5,
-            "max_grad_norm": 1.0,
-            "gradient_accumulation_steps": 1,
-        },
-        "seed": 42,
-        "distortion": {"dream_strength": 0.2, "nightmare_strength": 0.8},
-        "compression": {"pruning_ratio": 0.1, "bottleneck_rank_ratio": 0.5},
-        "notifications": {
-            "webhooks": [
-                {
-                    "url": "https://hooks.slack.com/services/T/B/X",
-                    "events": ["run_complete", "regression_detected"],
-                },
-                {
-                    "url": "https://discord.com/api/webhooks/123/abc",
-                },
+class TestValidateWebhookUrl:
+    def test_rejects_http(self):
+        assert validate_webhook_url("http://hooks.slack.com/services/T/B/x") is False
+
+    def test_rejects_non_allowlisted_domain(self):
+        assert validate_webhook_url("https://evil.com/hook") is False
+
+    def test_rejects_slack_without_services_path(self):
+        assert validate_webhook_url("https://hooks.slack.com/other/path") is False
+
+    def test_accepts_slack_with_services_path(self):
+        with patch("socket.getaddrinfo") as mock_res:
+            mock_res.return_value = [(2, 1, 6, "", ("44.228.100.1", 0))]
+            assert validate_webhook_url(
+                "https://hooks.slack.com/services/T123/B456/abc"
+            ) is True
+
+    def test_accepts_discord(self):
+        with patch("socket.getaddrinfo") as mock_res:
+            mock_res.return_value = [(2, 1, 6, "", ("162.159.128.1", 0))]
+            assert validate_webhook_url(
+                "https://discord.com/api/webhooks/123/token"
+            ) is True
+
+    def test_rejects_internal_ip_loopback(self):
+        with patch("socket.getaddrinfo") as mock_res:
+            mock_res.return_value = [(2, 1, 6, "", ("127.0.0.1", 0))]
+            assert validate_webhook_url(
+                "https://hooks.slack.com/services/T123/B456/abc"
+            ) is False
+
+    def test_rejects_internal_ip_private(self):
+        with patch("socket.getaddrinfo") as mock_res:
+            mock_res.return_value = [(2, 1, 6, "", ("192.168.1.1", 0))]
+            assert validate_webhook_url(
+                "https://hooks.slack.com/services/T123/B456/abc"
+            ) is False
+
+    def test_rejects_if_any_resolved_address_is_private(self):
+        with patch("socket.getaddrinfo") as mock_res:
+            mock_res.return_value = [
+                (2, 1, 6, "", ("44.228.100.1", 0)),
+                (2, 1, 6, "", ("10.0.0.1", 0)),
             ]
-        },
-    }
-    errors = validate_config(valid_cfg)
-    assert not errors, f"Config validation failed unexpectedly: {errors}"
+            assert validate_webhook_url(
+                "https://hooks.slack.com/services/T123/B456/abc"
+            ) is False
+
+    def test_rejects_dns_failure(self):
+        import socket as _socket
+
+        with patch("socket.getaddrinfo", side_effect=_socket.gaierror("fail")):
+            assert validate_webhook_url(
+                "https://hooks.slack.com/services/T123/B456/abc"
+            ) is False
 
 
-def test_config_validation_invalid():
-    """Verify that invalid notifications config fails validation."""
-    invalid_cfg = {
-        "model": {"name": "gpt2", "type": "causal_lm", "max_length": 128, "device": "cpu"},
-        "dataset": {"name": "wikitext", "text_column": "text"},
-        "training": {
-            "wake_epochs": 1,
-            "dream_epochs": 1,
-            "nightmare_epochs": 1,
-            "num_cycles": 1,
-            "compression_rounds": 0,
-            "batch_size": 4,
-            "learning_rate": 5e-5,
-            "nightmare_lr_multiplier": 1.5,
-            "max_grad_norm": 1.0,
-            "gradient_accumulation_steps": 1,
-        },
-        "seed": 42,
-        "distortion": {"dream_strength": 0.2, "nightmare_strength": 0.8},
-        "compression": {"pruning_ratio": 0.1, "bottleneck_rank_ratio": 0.5},
-        "notifications": {
-            "webhooks": [
-                {
-                    # Missing URL
-                    "events": ["invalid_event"],  # Invalid event
-                }
-            ]
-        },
-    }
-    errors = validate_config(invalid_cfg)
-    assert len(errors) >= 2
-    assert any("missing required key: 'url'" in e for e in errors)
-    assert any("must be one of" in e for e in errors)
+class TestWebhookEndpointBlocksInternalIP:
+    """Regression test: the /api/v1/webhooks/test endpoint must reject
+    URLs that resolve to internal IPs BEFORE dispatching."""
 
+    @pytest.fixture
+    def client(self):
+        from starlette.testclient import TestClient
 
-@patch("urllib.request.urlopen")
-def test_send_slack_webhook(mock_urlopen):
-    """Verify Slack webhook payload structure."""
-    mock_response = MagicMock()
-    mock_response.getcode.return_value = 200
-    mock_urlopen.return_value.__enter__.return_value = mock_response
+        from nightmarenet.api.app import app
+        return TestClient(app)
 
-    url = "https://hooks.slack.com/services/T/B/X"
-    _send_webhook_request(url, "run_complete", "Pipeline complete message", {"run_id": "123"})
+    def test_rejects_internal_ip_with_400(self, client, monkeypatch):
+        monkeypatch.delenv("NIGHTMARENET_API_KEY", raising=False)
 
-    # Ensure urlopen was called
-    assert mock_urlopen.call_count == 1
-    args, kwargs = mock_urlopen.call_args
-    req = args[0]
-    assert req.full_url == url
-    assert req.headers["Content-type"] == "application/json"
+        with patch("socket.getaddrinfo") as mock_res:
+            mock_res.return_value = [(2, 1, 6, "", ("127.0.0.1", 0))]
+            response = client.post(
+                "/api/v1/notifications/test-webhook",
+                json={
+                    "url": "https://hooks.slack.com/services/T/B/x",
+                    "event_type": "run_complete",
+                },
+            )
 
-    # Parse payload
-    payload = json.loads(req.data.decode("utf-8"))
-    assert "blocks" in payload
-    assert payload["blocks"][0]["type"] == "header"
-    assert "RUN_COMPLETE" in payload["blocks"][0]["text"]["text"]
-    assert "Pipeline complete message" in payload["blocks"][1]["text"]["text"]
-    assert "run_id" in payload["blocks"][1]["text"]["text"]
+        assert response.status_code == 400
+        assert "Invalid webhook URL" in response.json()["detail"]
 
+    def test_dispatch_not_called_for_blocked_url(self, client, monkeypatch):
+        monkeypatch.delenv("NIGHTMARENET_API_KEY", raising=False)
 
-@patch("urllib.request.urlopen")
-def test_send_discord_webhook(mock_urlopen):
-    """Verify Discord webhook payload structure."""
-    mock_response = MagicMock()
-    mock_response.getcode.return_value = 204
-    mock_urlopen.return_value.__enter__.return_value = mock_response
+        with patch("socket.getaddrinfo") as mock_res:
+            mock_res.return_value = [(2, 1, 6, "", ("10.0.0.1", 0))]
+            with patch(
+                "nightmarenet.utils.webhooks.trigger_webhook"
+            ) as mock_trigger:
+                client.post(
+                    "/api/v1/notifications/test-webhook",
+                    json={
+                        "url": "https://hooks.slack.com/services/T/B/x",
+                        "event_type": "alert",
+                    },
+                )
 
+<<<<<<< HEAD
     url = "https://discord.com/api/webhooks/123/abc"
     _send_webhook_request(url, "alert", "VRAM warning message", {"gpu": "RTX 3050"})
 
@@ -242,3 +233,6 @@ def test_webhook_retry_fail(mock_sleep, mock_urlopen):
 
     assert mock_urlopen.call_count == 1
     assert mock_sleep.call_count == 0
+=======
+        mock_trigger.assert_not_called()
+>>>>>>> upstream/main
