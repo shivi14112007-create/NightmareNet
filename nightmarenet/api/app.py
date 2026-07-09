@@ -1007,7 +1007,10 @@ async def test_webhook_endpoint(
     if not validate_webhook_url(body.url):
         raise HTTPException(
             status_code=400,
-            detail="Invalid webhook URL. Must be an allowed HTTPS domain and not resolve to an internal IP."
+            detail=(
+                "Invalid webhook URL. Must be an allowed HTTPS domain"
+                " and not resolve to an internal IP."
+            )
         )
 
     # Temporary configuration dict containing the target webhook

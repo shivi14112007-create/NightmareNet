@@ -29,11 +29,13 @@ def validate_webhook_url(url: str) -> bool:
         allowed = False
         if hostname == "hooks.slack.com":
             allowed = True
-        elif hostname in ("discord.com", "discordapp.com") and parsed.path.startswith("/api/webhooks/"):
+        elif hostname in ("discord.com", "discordapp.com") and parsed.path.startswith(
+            "/api/webhooks/"
+        ):
             allowed = True
         elif hostname.endswith(".webhook.office.com"):
             allowed = True
-        
+
         if not allowed:
             return False
 
@@ -42,7 +44,7 @@ def validate_webhook_url(url: str) -> bool:
         ip = ipaddress.ip_address(ip_addr)
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast:
             return False
-            
+
         return True
     except Exception:
         return False
