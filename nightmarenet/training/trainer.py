@@ -138,8 +138,7 @@ class Trainer:
             model_cls = _MODEL_TYPE_MAP.get(self.model_type)
             if model_cls is None:
                 raise ValueError(
-                    f"Unknown model type '{self.model_type}'. "
-                    f"Supported: {list(_MODEL_TYPE_MAP)}"
+                    f"Unknown model type '{self.model_type}'. Supported: {list(_MODEL_TYPE_MAP)}"
                 )
             try:
                 kwargs = {}
@@ -155,6 +154,7 @@ class Trainer:
         # Load weights from checkpoint if resuming
         if resume_from:
             from nightmarenet.distributed.checkpoint import load_model_weights
+
             load_model_weights(self.model, resume_from, self.device)
 
         if tokenizer is None:
@@ -278,9 +278,7 @@ class Trainer:
             run_id_to_use = "default_run"
 
         metrics = self.history[-1] if self.history else None
-        devices_used = (
-            self.device_pool.available_devices if hasattr(self, "device_pool") else []
-        )
+        devices_used = self.device_pool.available_devices if hasattr(self, "device_pool") else []
 
         path = self.checkpointer.save(
             run_id=run_id_to_use,
@@ -321,6 +319,7 @@ class Trainer:
                 compute_dir_hashes,
                 validate_checkpoint_integrity,
             )
+
             file_hashes = compute_dir_hashes(path)
             metadata = {}
             if os.path.exists(meta_path):
@@ -383,6 +382,7 @@ class Trainer:
         resume_from = self.training_config.get("resume_from")
         if resume_from:
             from nightmarenet.distributed.checkpoint import validate_checkpoint_integrity
+
             try:
                 # Explicit structural, version and checksum validation of the checkpoint folder
                 validate_checkpoint_integrity(resume_from, self.config)
@@ -401,8 +401,7 @@ class Trainer:
                     state = torch.load(state_path, map_location=self.device)
                 except (pickle.PickleError, KeyError, RuntimeError) as e:
                     logger.error(
-                        "Failed to load training state from %s: %s. "
-                        "Continuing with fresh history.",
+                        "Failed to load training state from %s: %s. Continuing with fresh history.",
                         state_path,
                         e,
                     )
@@ -424,9 +423,7 @@ class Trainer:
                             try:
                                 self.optimizer.load_state_dict(saved_opt)
                             except Exception as opt_err:
-                                logger.warning(
-                                    "Failed to load optimizer state dict: %s", opt_err
-                                )
+                                logger.warning("Failed to load optimizer state dict: %s", opt_err)
 
                     if self.scaler is not None and state.get("scaler_state_dict") is not None:
                         try:
@@ -498,10 +495,10 @@ class Trainer:
                     break
 
                 if self._stop_requested:
-                    logger.info("Training stop requested. Terminating after cycle %d.", cycle+1)
+                    logger.info("Training stop requested. Terminating after cycle %d.", cycle + 1)
                     break
                 # Early stopping check
-                if hasattr(self.scheduler, 'should_stop') and self.scheduler.should_stop:
+                if hasattr(self.scheduler, "should_stop") and self.scheduler.should_stop:
                     logger.info("Early stopping: halting training at cycle %d.", cycle + 1)
                     break
                 current_cycle = cycle
@@ -531,7 +528,7 @@ class Trainer:
                     phase=phase,
                     model=self.model,
                     device_pool=self.device_pool,
-                    ddp_wrapper=self.ddp_wrapper
+                    ddp_wrapper=self.ddp_wrapper,
                 )
 
                 if phase == "wake":
@@ -624,7 +621,7 @@ class Trainer:
 
                 # Update adaptive scheduler with phase loss
                 avg_loss = result.get("avg_loss")
-                if hasattr(self.scheduler, 'update') and avg_loss is not None:
+                if hasattr(self.scheduler, "update") and avg_loss is not None:
                     self.scheduler.update(phase, avg_loss)
 
                 # Save checkpoint
@@ -653,7 +650,7 @@ class Trainer:
                                     "usage_percent": f"{pct:.1f}%",
                                     "cycle": cycle + 1,
                                     "phase": phase,
-                                }
+                                },
                             )
                         except Exception as e:
                             logger.warning("Failed to record VRAM alert details: %s", e)
@@ -701,6 +698,7 @@ class Trainer:
         self.tracker.finish()
         logger.info("Training complete. Final model saved to %s", final_path)
         return self.history
+
 
 def create_trainer_from_config(config: dict, model=None, tokenizer=None) -> Trainer:
     """Create a Trainer instance from a configuration dictionary.

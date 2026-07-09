@@ -4,7 +4,6 @@ Verifies that the DRY refactor (importing distort() from dream.py/nightmare.py
 instead of inline logic) produces correct results.
 """
 
-
 from nightmarenet.distortions.dream import distort as dream_distort
 from nightmarenet.distortions.nightmare import distort as nightmare_distort
 

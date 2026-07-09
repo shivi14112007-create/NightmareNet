@@ -40,9 +40,7 @@ class TestDreamDatasetGenerator:
         # At least some texts should be modified
         original_texts = dataset["text"]
         generated_texts = result["text"]
-        differences = sum(
-            1 for o, g in zip(original_texts, generated_texts) if o != g
-        )
+        differences = sum(1 for o, g in zip(original_texts, generated_texts) if o != g)
         # With strength=0.5 and seed=42, expect at least some modifications
         assert differences > 0, "Expected some texts to be modified at strength=0.5"
 

@@ -62,14 +62,10 @@ def _validate_score(score: float) -> float:
     try:
         s = float(score)
     except (TypeError, ValueError) as e:
-        raise HTTPException(
-            status_code=400, detail="score must be a real number in [0, 1]"
-        ) from e
+        raise HTTPException(status_code=400, detail="score must be a real number in [0, 1]") from e
     # NaN comparisons always return False; trap explicitly.
     if not (s == s):  # noqa: PLR0124
-        raise HTTPException(
-            status_code=400, detail="score must be a real number in [0, 1]"
-        )
+        raise HTTPException(status_code=400, detail="score must be a real number in [0, 1]")
     if s < 0.0 or s > 1.0:
         raise HTTPException(
             status_code=400,

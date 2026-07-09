@@ -91,28 +91,18 @@ class TrainingConfigRequest(BaseModel):
         default="causal_lm",
         description="Model type: causal_lm, masked_lm, or seq_classification.",
     )
-    num_cycles: int = Field(
-        default=3, ge=1, le=100, description="Number of full sleep cycles."
-    )
-    wake_epochs: int = Field(
-        default=3, ge=0, le=50, description="Epochs per wake phase."
-    )
-    dream_epochs: int = Field(
-        default=2, ge=0, le=50, description="Epochs per dream phase."
-    )
-    nightmare_epochs: int = Field(
-        default=1, ge=0, le=50, description="Epochs per nightmare phase."
-    )
-    learning_rate: float = Field(
-        default=5e-5, gt=0, le=1.0, description="Base learning rate."
-    )
+    num_cycles: int = Field(default=3, ge=1, le=100, description="Number of full sleep cycles.")
+    wake_epochs: int = Field(default=3, ge=0, le=50, description="Epochs per wake phase.")
+    dream_epochs: int = Field(default=2, ge=0, le=50, description="Epochs per dream phase.")
+    nightmare_epochs: int = Field(default=1, ge=0, le=50, description="Epochs per nightmare phase.")
+    learning_rate: float = Field(default=5e-5, gt=0, le=1.0, description="Base learning rate.")
     nightmare_lr_multiplier: float = Field(
-        default=2.0, ge=1.0, le=10.0,
+        default=2.0,
+        ge=1.0,
+        le=10.0,
         description="Learning rate multiplier for nightmare phase.",
     )
-    batch_size: int = Field(
-        default=8, ge=1, le=256, description="Training batch size."
-    )
+    batch_size: int = Field(default=8, ge=1, le=256, description="Training batch size.")
     dream_strength: float = Field(
         default=0.25, ge=0.0, le=1.0, description="Dream distortion strength."
     )
@@ -123,12 +113,12 @@ class TrainingConfigRequest(BaseModel):
         default=0.2, ge=0.0, lt=1.0, description="Fraction of weights to prune."
     )
     kl_weight: float = Field(
-        default=0.1, ge=0.0, le=10.0,
+        default=0.1,
+        ge=0.0,
+        le=10.0,
         description="KL divergence loss weight during dream phase.",
     )
-    early_stopping: bool = Field(
-        default=False, description="Stop training when loss plateaus."
-    )
+    early_stopping: bool = Field(default=False, description="Stop training when loss plateaus.")
     use_learned_adversarial: bool = Field(
         default=False,
         description="Use learned adversarial distortions (MLM-based). Slower but stronger.",
@@ -164,11 +154,15 @@ class CompareRequest(BaseModel):
 
     text: str = Field(..., min_length=1, max_length=50000, description="Text to evaluate.")
     baseline_strength: float = Field(
-        default=0.3, ge=0.0, le=1.0,
+        default=0.3,
+        ge=0.0,
+        le=1.0,
         description="Baseline distortion strength (milder).",
     )
     challenge_strength: float = Field(
-        default=0.8, ge=0.0, le=1.0,
+        default=0.8,
+        ge=0.0,
+        le=1.0,
         description="Challenge distortion strength (stronger).",
     )
     seed: Optional[int] = Field(
@@ -222,11 +216,15 @@ class DemoRequest(BaseModel):
     """Request body for the interactive demo endpoint."""
 
     text: str = Field(
-        ..., min_length=1, max_length=10000,
+        ...,
+        min_length=1,
+        max_length=10000,
         description="Text to distort through dream and nightmare modes.",
     )
     seed: Optional[int] = Field(
-        default=42, ge=0, le=2**31 - 1,
+        default=42,
+        ge=0,
+        le=2**31 - 1,
         description="Random seed for reproducible demo results.",
     )
 
@@ -245,9 +243,7 @@ class DemoResponse(BaseModel):
         description="Similarity drop from dream to nightmare (0-1).",
     )
     insight: str = Field(
-        description=(
-            "Human-readable explanation of what the distortions reveal."
-        ),
+        description=("Human-readable explanation of what the distortions reveal."),
     )
 
 
@@ -351,4 +347,3 @@ class TestWebhookRequest(BaseModel):
         default="run_complete",
         description="Event type to test: run_complete, regression_detected, alert, deploy",
     )
-

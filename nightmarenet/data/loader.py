@@ -61,9 +61,7 @@ class DatasetWrapper:
         if self.max_samples is not None:
             validate_positive_int(self.max_samples, "max_samples")
 
-        logger.info(
-            "Loading dataset '%s' (subset=%s)", self.dataset_name, self.subset
-        )
+        logger.info("Loading dataset '%s' (subset=%s)", self.dataset_name, self.subset)
 
         kwargs: dict[str, Any] = {"path": self.dataset_name}
         if self.subset:
@@ -75,8 +73,7 @@ class DatasetWrapper:
             raw = load_dataset(**kwargs)
         except Exception as exc:
             raise RuntimeError(
-                f"Failed to load dataset '{self.dataset_name}' "
-                f"(subset={self.subset}): {exc}"
+                f"Failed to load dataset '{self.dataset_name}' (subset={self.subset}): {exc}"
             ) from exc
 
         if self.streaming:
@@ -91,9 +88,7 @@ class DatasetWrapper:
             # Use the first available split
             first_split = list(raw.keys())[0]
             self._train_dataset = raw[first_split]
-            logger.warning(
-                "No 'train' split found; using '%s' split.", first_split
-            )
+            logger.warning("No 'train' split found; using '%s' split.", first_split)
 
         if "test" in raw:
             self._test_dataset = raw["test"]
@@ -101,9 +96,7 @@ class DatasetWrapper:
             self._test_dataset = raw["validation"]
         else:
             # Split train data
-            split = self._train_dataset.train_test_split(
-                test_size=0.1, seed=self.seed
-            )
+            split = self._train_dataset.train_test_split(test_size=0.1, seed=self.seed)
             self._train_dataset = split["train"]
             self._test_dataset = split["test"]
             logger.info("Created test split from training data (10%%).")
@@ -126,15 +119,13 @@ class DatasetWrapper:
         test_filtered = test_count_before - len(self._test_dataset)
         if train_count_before > 0 and train_filtered > train_count_before * 0.5:
             logger.warning(
-                "More than 50%% of training data was filtered as empty "
-                "(%d of %d samples removed).",
+                "More than 50%% of training data was filtered as empty (%d of %d samples removed).",
                 train_filtered,
                 train_count_before,
             )
         if test_count_before > 0 and test_filtered > test_count_before * 0.5:
             logger.warning(
-                "More than 50%% of test data was filtered as empty "
-                "(%d of %d samples removed).",
+                "More than 50%% of test data was filtered as empty (%d of %d samples removed).",
                 test_filtered,
                 test_count_before,
             )
@@ -142,9 +133,7 @@ class DatasetWrapper:
         # Limit samples if requested
         if self.max_samples is not None:
             if len(self._train_dataset) > self.max_samples:
-                self._train_dataset = self._train_dataset.select(
-                    range(self.max_samples)
-                )
+                self._train_dataset = self._train_dataset.select(range(self.max_samples))
                 logger.info("Limited training data to %d samples.", self.max_samples)
             test_limit = min(len(self._test_dataset), self.max_samples // 5)
             if test_limit > 0:

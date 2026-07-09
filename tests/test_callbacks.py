@@ -21,9 +21,7 @@ def test_callback_manager_emits_to_handlers() -> None:
         received.append(event.phase)
 
     mgr.on(EventType.STEP, handler)
-    mgr.emit(
-        TrainingEvent(event_type=EventType.STEP, phase="dream", step=1, total_steps=10)
-    )
+    mgr.emit(TrainingEvent(event_type=EventType.STEP, phase="dream", step=1, total_steps=10))
     assert received == ["dream"]
 
 

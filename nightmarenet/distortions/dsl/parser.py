@@ -49,9 +49,7 @@ def parse_chain_config(
         for step in chain_config.chain:
             if step.engine not in registry:
                 available = ", ".join(registry.engine_names)
-                raise ValueError(
-                    f"Unknown engine '{step.engine}' in step. Available: {available}"
-                )
+                raise ValueError(f"Unknown engine '{step.engine}' in step. Available: {available}")
 
     return chain_config
 

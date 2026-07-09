@@ -16,9 +16,9 @@ def test_pareto_frontier_correctness():
     """Test that the Pareto frontier correctly identifies non-dominated models."""
     results = [
         {"model": "A", "robustness": 0.9, "latency": 10.0, "params": 100},  # dominated by B
-        {"model": "B", "robustness": 0.95, "latency": 5.0, "params": 50},   # pareto optimal
-        {"model": "C", "robustness": 0.8, "latency": 2.0, "params": 20},    # pareto optimal
-        {"model": "D", "robustness": 0.7, "latency": 8.0, "params": 80},    # dominated by C
+        {"model": "B", "robustness": 0.95, "latency": 5.0, "params": 50},  # pareto optimal
+        {"model": "C", "robustness": 0.8, "latency": 2.0, "params": 20},  # pareto optimal
+        {"model": "D", "robustness": 0.7, "latency": 8.0, "params": 80},  # dominated by C
     ]
 
     pareto_front = get_pareto_frontier(results)
@@ -33,18 +33,8 @@ def test_pareto_frontier_correctness():
 def test_degradation_curve_aggregation():
     """Test aggregation of robustness scores into degradation curves."""
     raw_results = {
-        "model_A": {
-            "dream": {
-                "strengths": [0.1, 0.5, 0.9],
-                "accuracies": [10.0, 50.0, 100.0]
-            }
-        },
-        "model_B": {
-            "dream": {
-                "strengths": [0.1, 0.5],
-                "accuracies": [5.0, 20.0]
-            }
-        }
+        "model_A": {"dream": {"strengths": [0.1, 0.5, 0.9], "accuracies": [10.0, 50.0, 100.0]}},
+        "model_B": {"dream": {"strengths": [0.1, 0.5], "accuracies": [5.0, 20.0]}},
     }
 
     curves = calculate_degradation_curves(raw_results)
@@ -91,12 +81,7 @@ def test_ensemble_orchestrator_logic(mock_executor_class):
         "robustness": 0.99,
         "latency": 1.5,
         "params": 1000,
-        "results_by_distortion": {
-            "dream": {
-                "strengths": [0.1, 0.5],
-                "accuracies": [5.0, 10.0]
-            }
-        }
+        "results_by_distortion": {"dream": {"strengths": [0.1, 0.5], "accuracies": [5.0, 10.0]}},
     }
 
     mock_executor = mock.MagicMock()
@@ -107,7 +92,7 @@ def test_ensemble_orchestrator_logic(mock_executor_class):
     config = {
         "models": ["dummy"],
         "dataset": {"name": "test", "split": "val"},
-        "distortions": [{"type": "dream", "strengths": [0.1, 0.5]}]
+        "distortions": [{"type": "dream", "strengths": [0.1, 0.5]}],
     }
 
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
@@ -144,10 +129,7 @@ def test_ensemble_orchestrator_timeout(mock_executor_class):
 
     mock_executor_class.return_value = mock_executor
 
-    config = {
-        "models": ["slow_model"],
-        "dataset": {"name": "test"}
-    }
+    config = {"models": ["slow_model"], "dataset": {"name": "test"}}
 
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
         yaml.dump(config, f)

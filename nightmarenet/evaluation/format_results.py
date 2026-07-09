@@ -37,7 +37,7 @@ def to_latex_table(models_summary: list[dict[str, Any]], output_path: str) -> No
         "\\hline",
         "\\textbf{Model} & \\textbf{Robustness Score} & ",
         "\\textbf{Latency (s)} & \\textbf{Parameters} \\\\",
-        "\\hline"
+        "\\hline",
     ]
 
     for m in models_summary:
@@ -56,23 +56,22 @@ def to_latex_table(models_summary: list[dict[str, Any]], output_path: str) -> No
 
         lines.append(f"{model_name} & {rob:.4f} & {lat:.4f} & {params_str} \\\\")
 
-    lines.extend([
-        "\\hline",
-        "\\end{tabular}",
-        "\\caption{Ensemble Robustness Benchmarking Results}",
-        "\\label{tab:ensemble_results}",
-        "\\end{table}"
-    ])
+    lines.extend(
+        [
+            "\\hline",
+            "\\end{tabular}",
+            "\\caption{Ensemble Robustness Benchmarking Results}",
+            "\\label{tab:ensemble_results}",
+            "\\end{table}",
+        ]
+    )
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 
 def format_all(
-    results: dict[str, Any],
-    formats: list[str],
-    output_dir: str,
-    prefix: str = "ensemble"
+    results: dict[str, Any], formats: list[str], output_dir: str, prefix: str = "ensemble"
 ) -> None:
     """Export to all requested formats."""
     os.makedirs(output_dir, exist_ok=True)

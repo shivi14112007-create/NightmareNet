@@ -85,10 +85,12 @@ class TestPipelineIngest:
     def test_ingest_text_content(self, minimal_config):
         """Ingesting raw text should produce a Dataset."""
         pipe = Pipeline(minimal_config)
-        content = "\n\n".join([
-            f"Paragraph {i}: This sentence is long enough to be valid training data."
-            for i in range(30)
-        ])
+        content = "\n\n".join(
+            [
+                f"Paragraph {i}: This sentence is long enough to be valid training data."
+                for i in range(30)
+            ]
+        )
         pipe.ingest(text_content=content)
         assert pipe._dataset is not None
         assert len(pipe._dataset) >= 10
@@ -155,24 +157,26 @@ class TestPipelineEventCallback:
     def test_events_on_ingest(self, minimal_config):
         events = []
         pipe = Pipeline(minimal_config, on_event=lambda e: events.append(e))
-        content = "\n\n".join([
-            f"Paragraph {i}: Long enough text for ingestion testing purposes here."
-            for i in range(30)
-        ])
+        content = "\n\n".join(
+            [
+                f"Paragraph {i}: Long enough text for ingestion testing purposes here."
+                for i in range(30)
+            ]
+        )
         pipe.ingest(text_content=content)
         assert len(events) >= 1
         assert events[0]["status"] == "ingesting"
 
     def test_event_callback_exception_doesnt_crash(self, minimal_config):
         """If callback raises, pipeline should not crash."""
+
         def bad_callback(e):
             raise RuntimeError("callback error")
 
         pipe = Pipeline(minimal_config, on_event=bad_callback)
-        content = "\n\n".join([
-            f"Paragraph {i}: This is text number {i} with enough characters."
-            for i in range(30)
-        ])
+        content = "\n\n".join(
+            [f"Paragraph {i}: This is text number {i} with enough characters." for i in range(30)]
+        )
         # Should not raise
         pipe.ingest(text_content=content)
 
@@ -210,8 +214,10 @@ class TestPipelineRunner:
         assert get_runner(rid) is runner
         assert get_runner("nonexistent") is None
 
+
 class TestAdaptiveTermination:
     """Tests adaptive cycle termination."""
+
     def test_auto_terminate_disabled(self, minimal_config):
         """Adaptive termination should do nothing when disabled."""
 
@@ -223,10 +229,7 @@ class TestAdaptiveTermination:
         minimal_config["training"]["auto_terminate"] = False
 
         event = {"cycle": 0}
-        with patch(
-            "nightmarenet.pipeline.quick_robustness_score"
-        ) as mock_score:
-
+        with patch("nightmarenet.pipeline.quick_robustness_score") as mock_score:
             pipe._handle_cycle_end(event)
 
             mock_score.assert_not_called()
@@ -246,10 +249,7 @@ class TestAdaptiveTermination:
         pipe._trainer.device = "cpu"
         pipe._dataset = MagicMock()
 
-        with patch(
-            "nightmarenet.pipeline.quick_robustness_score"
-        ) as mock_score:
-
+        with patch("nightmarenet.pipeline.quick_robustness_score") as mock_score:
             mock_score.side_effect = [
                 0.80,
                 0.805,
@@ -271,6 +271,8 @@ class TestAdaptiveTermination:
         pipe = Pipeline(minimal_config)
 
         assert pipe.config["training"]["num_cycles"] == 1
+
+
 class TestPerCycleMetrics:
     """Tests per-cycle evaluation via evaluate_cycle()."""
 

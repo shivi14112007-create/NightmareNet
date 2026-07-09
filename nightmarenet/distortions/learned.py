@@ -46,8 +46,7 @@ class LearnedAdversarialGenerator:
             logger.info("Loaded learned adversarial model: %s", model_name)
         except Exception as exc:
             logger.warning(
-                "Could not load adversarial model '%s': %s. "
-                "Falling back to random replacement.",
+                "Could not load adversarial model '%s': %s. Falling back to random replacement.",
                 model_name,
                 exc,
             )
@@ -123,8 +122,16 @@ class LearnedAdversarialGenerator:
         if not self._available or self._model is None:
             # Fallback: replace with random common words
             fallback_words = [
-                "however", "never", "always", "perhaps", "indeed",
-                "actually", "certainly", "rarely", "frequently", "surprisingly",
+                "however",
+                "never",
+                "always",
+                "perhaps",
+                "indeed",
+                "actually",
+                "certainly",
+                "rarely",
+                "frequently",
+                "surprisingly",
             ]
             for idx in token_indices:
                 if 0 <= idx < len(words):

@@ -18,6 +18,7 @@ try:
     from pathlib import Path
 
     from dotenv import load_dotenv
+
     _env_path = Path(__file__).resolve().parents[2] / ".env"
     load_dotenv(_env_path)
 except ImportError:
@@ -98,9 +99,7 @@ app.add_middleware(APIKeyMiddleware)  # type: ignore[arg-type]
 
 # --- CORS ---
 _cors_origins = [
-    o.strip()
-    for o in os.environ.get("NIGHTMARENET_CORS_ORIGINS", "*").split(",")
-    if o.strip()
+    o.strip() for o in os.environ.get("NIGHTMARENET_CORS_ORIGINS", "*").split(",") if o.strip()
 ]
 app.add_middleware(
     CORSMiddleware,  # type: ignore[arg-type]
@@ -319,29 +318,21 @@ async def evaluate_robustness(
             )
 
             scores["dream"][str(strength)] = {
-                "similarity": round(
-                    _char_similarity(body.text, dream_result), 4
-                ),
-                "length_ratio": round(
-                    len(dream_result) / max(len(body.text), 1), 4
-                ),
+                "similarity": round(_char_similarity(body.text, dream_result), 4),
+                "length_ratio": round(len(dream_result) / max(len(body.text), 1), 4),
             }
             scores["nightmare"][str(strength)] = {
-                "similarity": round(
-                    _char_similarity(body.text, nightmare_result), 4
-                ),
-                "length_ratio": round(
-                    len(nightmare_result) / max(len(body.text), 1), 4
-                ),
+                "similarity": round(_char_similarity(body.text, nightmare_result), 4),
+                "length_ratio": round(len(nightmare_result) / max(len(body.text), 1), 4),
             }
 
         # Summary
-        avg_dream_sim = sum(
-            v["similarity"] for v in scores["dream"].values()
-        ) / max(len(scores["dream"]), 1)
-        avg_nightmare_sim = sum(
-            v["similarity"] for v in scores["nightmare"].values()
-        ) / max(len(scores["nightmare"]), 1)
+        avg_dream_sim = sum(v["similarity"] for v in scores["dream"].values()) / max(
+            len(scores["dream"]), 1
+        )
+        avg_nightmare_sim = sum(v["similarity"] for v in scores["nightmare"].values()) / max(
+            len(scores["nightmare"]), 1
+        )
 
         summary = (
             f"Dream avg similarity: {avg_dream_sim:.2%}, "
@@ -448,22 +439,30 @@ async def preview_training_config(
 
         for cycle in range(1, body.num_cycles + 1):
             if body.wake_epochs > 0:
-                phases.append(TrainingPhasePreview(
-                    cycle=cycle, phase="wake", epochs=body.wake_epochs,
-                    learning_rate=lr,
-                    description="Supervised learning on clean data.",
-                ))
+                phases.append(
+                    TrainingPhasePreview(
+                        cycle=cycle,
+                        phase="wake",
+                        epochs=body.wake_epochs,
+                        learning_rate=lr,
+                        description="Supervised learning on clean data.",
+                    )
+                )
                 total_epochs += body.wake_epochs
 
             if body.dream_epochs > 0:
-                phases.append(TrainingPhasePreview(
-                    cycle=cycle, phase="dream", epochs=body.dream_epochs,
-                    learning_rate=lr,
-                    description=(
-                        f"Mild distortions (strength={body.dream_strength}) "
-                        f"with KL weight={body.kl_weight}."
-                    ),
-                ))
+                phases.append(
+                    TrainingPhasePreview(
+                        cycle=cycle,
+                        phase="dream",
+                        epochs=body.dream_epochs,
+                        learning_rate=lr,
+                        description=(
+                            f"Mild distortions (strength={body.dream_strength}) "
+                            f"with KL weight={body.kl_weight}."
+                        ),
+                    )
+                )
                 total_epochs += body.dream_epochs
 
             if body.nightmare_epochs > 0:
@@ -474,18 +473,27 @@ async def preview_training_config(
                 )
                 if body.use_learned_adversarial:
                     desc += " Learned adversarial enabled."
-                phases.append(TrainingPhasePreview(
-                    cycle=cycle, phase="nightmare", epochs=body.nightmare_epochs,
-                    learning_rate=nlr, description=desc,
-                ))
+                phases.append(
+                    TrainingPhasePreview(
+                        cycle=cycle,
+                        phase="nightmare",
+                        epochs=body.nightmare_epochs,
+                        learning_rate=nlr,
+                        description=desc,
+                    )
+                )
                 total_epochs += body.nightmare_epochs
 
             # Compress phase (1 epoch for pruning + fine-tuning)
-            phases.append(TrainingPhasePreview(
-                cycle=cycle, phase="compress", epochs=1,
-                learning_rate=lr,
-                description=f"Magnitude pruning at ratio={body.pruning_ratio}, then fine-tune.",
-            ))
+            phases.append(
+                TrainingPhasePreview(
+                    cycle=cycle,
+                    phase="compress",
+                    epochs=1,
+                    learning_rate=lr,
+                    description=f"Magnitude pruning at ratio={body.pruning_ratio}, then fine-tune.",
+                )
+            )
             total_epochs += 1
 
         # Recommendations
@@ -496,13 +504,11 @@ async def preview_training_config(
             )
         if body.nightmare_strength < 0.5:
             recommendations.append(
-                "Nightmare strength < 0.5 is mild. "
-                "Try 0.7–0.9 for effective stress-testing."
+                "Nightmare strength < 0.5 is mild. Try 0.7–0.9 for effective stress-testing."
             )
         if body.num_cycles < 3:
             recommendations.append(
-                "Fewer than 3 cycles may not provide enough improvement. "
-                "3–5 cycles is recommended."
+                "Fewer than 3 cycles may not provide enough improvement. 3–5 cycles is recommended."
             )
         if body.nightmare_epochs == 0:
             recommendations.append(
@@ -516,8 +522,7 @@ async def preview_training_config(
             )
         if not body.early_stopping and body.num_cycles >= 5:
             recommendations.append(
-                "Consider enabling early_stopping for ≥ 5 cycles "
-                "to avoid unnecessary computation."
+                "Consider enabling early_stopping for ≥ 5 cycles to avoid unnecessary computation."
             )
         if not body.use_learned_adversarial and body.nightmare_strength >= 0.7:
             recommendations.append(
@@ -586,9 +591,7 @@ async def compare_distortions(
 
         # Baseline distortions
         dream_base = _apply_dream_distortions(body.text, body.baseline_strength, seed=seed)
-        nightmare_base = _apply_nightmare_distortions(
-            body.text, body.baseline_strength, seed=seed
-        )
+        nightmare_base = _apply_nightmare_distortions(body.text, body.baseline_strength, seed=seed)
 
         # Challenge distortions
         dream_challenge = _apply_dream_distortions(body.text, body.challenge_strength, seed=seed)
@@ -668,9 +671,7 @@ async def compare_distortions(
     tags=["Demo"],
 )
 @limiter.limit("60/minute")
-async def interactive_demo(
-    request: Request, body: DemoRequest = _DEMO_BODY
-) -> DemoResponse:
+async def interactive_demo(request: Request, body: DemoRequest = _DEMO_BODY) -> DemoResponse:
     """Run dream + nightmare distortions in one call for the guided demo.
 
     Returns both distortion results with a resilience delta and a
@@ -681,19 +682,13 @@ async def interactive_demo(
         dream_strength = 0.25
         nightmare_strength = 0.80
 
-        dream_result = _apply_dream_distortions(
-            body.text, dream_strength, seed=body.seed
-        )
+        dream_result = _apply_dream_distortions(body.text, dream_strength, seed=body.seed)
         nightmare_result = _apply_nightmare_distortions(
             body.text, nightmare_strength, seed=body.seed
         )
 
-        dream_sim = round(
-            _char_similarity(body.text, dream_result), 4
-        )
-        nightmare_sim = round(
-            _char_similarity(body.text, nightmare_result), 4
-        )
+        dream_sim = round(_char_similarity(body.text, dream_result), 4)
+        nightmare_sim = round(_char_similarity(body.text, nightmare_result), 4)
         delta = round(dream_sim - nightmare_sim, 4)
 
         word_count = len(body.text.split())
@@ -728,8 +723,7 @@ async def interactive_demo(
                 distorted_text=nightmare_result,
                 similarity=nightmare_sim,
                 length_ratio=round(
-                    len(nightmare_result)
-                    / max(len(body.text), 1),
+                    len(nightmare_result) / max(len(body.text), 1),
                     4,
                 ),
             ),
@@ -885,9 +879,9 @@ async def create_pipeline(
         "tracking": {"backend": "none"},
         "seed": 42,
         "notifications": {
-            "webhooks": [
-                {"url": wh.url, "events": wh.events} for wh in body.webhooks
-            ] if body.webhooks else [],
+            "webhooks": [{"url": wh.url, "events": wh.events} for wh in body.webhooks]
+            if body.webhooks
+            else [],
         },
     }
 
@@ -972,9 +966,7 @@ async def get_pipeline_report(run_id: str):
 
     metrics = runner.pipeline.metrics
     if metrics.report_md is None:
-        raise HTTPException(
-            400, "Pipeline has not completed evaluation yet."
-        )
+        raise HTTPException(400, "Pipeline has not completed evaluation yet.")
 
     return PipelineReportResponse(
         run_id=run_id,
@@ -1022,9 +1014,7 @@ async def test_webhook_endpoint(
             "message": f"This is a test notification for {body.event_type}.",
         }
         if body.event_type == "run_complete":
-            details.update(
-                {"run_id": "test-run-12345", "status": "complete", "model": "gpt2"}
-            )
+            details.update({"run_id": "test-run-12345", "status": "complete", "model": "gpt2"})
         elif body.event_type == "regression_detected":
             details.update(
                 {
@@ -1041,9 +1031,7 @@ async def test_webhook_endpoint(
                 }
             )
         elif body.event_type == "deploy":
-            details.update(
-                {"mode": "full", "output_path": "results/benchmark-v1.json"}
-            )
+            details.update({"mode": "full", "output_path": "results/benchmark-v1.json"})
 
         trigger_webhook(
             temp_config,
@@ -1104,4 +1092,3 @@ async def websocket_pipeline_progress(websocket: WebSocket, run_id: str):
             await websocket.close(code=1011)
         except Exception:
             pass
-

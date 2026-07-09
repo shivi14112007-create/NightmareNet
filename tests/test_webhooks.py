@@ -236,6 +236,7 @@ def test_webhook_retry_fail(mock_sleep, mock_urlopen):
 
     url = "https://example.com/webhook"
     import pytest
+
     with pytest.raises(urllib.error.HTTPError):
         _send_webhook_request(url, "run_complete", "Failure test message", {})
 

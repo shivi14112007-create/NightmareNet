@@ -64,6 +64,7 @@ def compute_perplexity(model, dataloader: DataLoader, device="cpu") -> float:
         return float("inf")
     return result
 
+
 def quick_robustness_score(
     model,
     base_dataset,
@@ -86,10 +87,7 @@ def quick_robustness_score(
     if len(base_dataset) == 0:
         return 0.0
     try:
-        subset = (
-            base_dataset.shuffle(seed=42)
-            .select(range(min(subset_size, len(base_dataset))))
-        )
+        subset = base_dataset.shuffle(seed=42).select(range(min(subset_size, len(base_dataset))))
         distorted = subset.map(
             lambda example: {
                 **example,
@@ -100,6 +98,7 @@ def quick_robustness_score(
             },
             desc="Quick robustness probe",
         )
+
         def tokenize_fn(examples):
             return tokenizer(
                 examples[text_column],
@@ -108,14 +107,13 @@ def quick_robustness_score(
                 max_length=max_length,
                 return_tensors="pt",
             )
+
         if isinstance(distorted, IterableDataset):
             tokenized = distorted.map(
                 tokenize_fn,
                 batched=True,
                 remove_columns=(
-                    distorted.column_names
-                    if distorted.column_names
-                    else [text_column]
+                    distorted.column_names if distorted.column_names else [text_column]
                 ),
             )
             tokenized = tokenized.with_format("torch")
@@ -142,7 +140,8 @@ def quick_robustness_score(
     except Exception as e:
         logger.warning("Error during quick robustness computation: %s", e)
         return 0.0
-    
+
+
 def evaluate_cycle(
     model,
     dataloader: DataLoader,
@@ -187,6 +186,7 @@ def evaluate_cycle(
         "robustness": robustness,
     }
 
+
 def recall_score(
     model,
     dataloader: DataLoader,
@@ -211,9 +211,7 @@ def recall_score(
 
     if tokenizer.pad_token_id is None:
         fallback = getattr(tokenizer, "eos_token_id", None) or 0
-        logger.warning(
-            "tokenizer.pad_token_id is None, falling back to %d", fallback
-        )
+        logger.warning("tokenizer.pad_token_id is None, falling back to %d", fallback)
         tokenizer.pad_token_id = fallback
 
     correct = 0
@@ -319,9 +317,7 @@ def robustness_score(
     for strength in strengths:
         # Apply distortion at this strength
         distorted = base_dataset.map(
-            lambda x, _s=strength: {
-                text_column: distortion_fn(x[text_column], strength=_s)
-            },
+            lambda x, _s=strength: {text_column: distortion_fn(x[text_column], strength=_s)},
             desc=f"Distorting at strength {strength:.1f}",
         )
 
@@ -421,9 +417,7 @@ def hallucination_rate(
 
                 # Track confidence on incorrect predictions
                 if incorrect.any():
-                    confidence_scores.extend(
-                        top_probs[incorrect].cpu().numpy().tolist()
-                    )
+                    confidence_scores.extend(top_probs[incorrect].cpu().numpy().tolist())
     except Exception as e:
         logger.warning("Error during hallucination rate computation: %s", e)
         return {

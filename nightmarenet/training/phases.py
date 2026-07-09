@@ -94,9 +94,7 @@ class WakePhase:
                 if (step + 1) % self.gradient_accumulation_steps == 0:
                     if self.scaler is not None:
                         self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.max_grad_norm
-                    )
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
                     if self.scaler is not None:
                         self.scaler.step(self.optimizer)
                         self.scaler.update()
@@ -242,9 +240,7 @@ class DreamPhase:
                 if (step + 1) % self.gradient_accumulation_steps == 0:
                     if self.scaler is not None:
                         self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.max_grad_norm
-                    )
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
                     if self.scaler is not None:
                         self.scaler.step(self.optimizer)
                         self.scaler.update()
@@ -391,9 +387,7 @@ class NightmarePhase:
                     if (step + 1) % self.gradient_accumulation_steps == 0:
                         if self.scaler is not None:
                             self.scaler.unscale_(self.optimizer)
-                        torch.nn.utils.clip_grad_norm_(
-                            self.model.parameters(), self.max_grad_norm
-                        )
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
                         if self.scaler is not None:
                             self.scaler.step(self.optimizer)
                             self.scaler.update()
@@ -467,9 +461,7 @@ class CompressionPhase:
         pruning_ratio = self.config.get("pruning_ratio", 0.2)
         method = self.config.get("pruning_method", "magnitude")
 
-        logger.info(
-            "Compression Phase - Method: %s, Ratio: %.2f", method, pruning_ratio
-        )
+        logger.info("Compression Phase - Method: %s, Ratio: %.2f", method, pruning_ratio)
 
         if method == "magnitude":
             try:
@@ -491,9 +483,7 @@ class CompressionPhase:
             and optimizer is not None
         ):
             finetune_epochs = self.config.get("finetune_epochs", 1)
-            logger.info(
-                "Fine-tuning after compression for %d epoch(s)...", finetune_epochs
-            )
+            logger.info("Fine-tuning after compression for %d epoch(s)...", finetune_epochs)
             self.model.train()
             for epoch in range(finetune_epochs):
                 for batch in tqdm(

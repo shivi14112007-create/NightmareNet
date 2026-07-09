@@ -203,8 +203,10 @@ class TestAuthentication:
         import importlib
 
         from nightmarenet.api import app as app_module
+
         importlib.reload(app_module)
         from nightmarenet.api.app import app as reloaded_app
+
         auth_client = TestClient(reloaded_app)
         response = auth_client.get("/api/v1/health")
         assert response.status_code == 200
@@ -227,8 +229,10 @@ class TestAuthentication:
         import importlib
 
         from nightmarenet.api import app as app_module
+
         importlib.reload(app_module)
         from nightmarenet.api.app import app as reloaded_app
+
         auth_client = TestClient(reloaded_app)
         response = auth_client.post(
             "/api/v1/generate/dream",
@@ -245,8 +249,10 @@ class TestAuthentication:
         import importlib
 
         from nightmarenet.api import app as app_module
+
         importlib.reload(app_module)
         from nightmarenet.api.app import app as reloaded_app
+
         auth_client = TestClient(reloaded_app)
         response = auth_client.post(
             "/api/v1/generate/dream",
@@ -264,8 +270,10 @@ class TestAuthentication:
         import importlib
 
         from nightmarenet.api import app as app_module
+
         importlib.reload(app_module)
         from nightmarenet.api.app import app as reloaded_app
+
         auth_client = TestClient(reloaded_app)
         response = auth_client.post(
             "/api/v1/generate/dream",
@@ -568,6 +576,7 @@ class TestUploadEndpoint:
 
     def test_upload_rejects_too_large(self, monkeypatch):
         import nightmarenet.api.app as api_module
+
         monkeypatch.setattr(api_module, "_MAX_UPLOAD_BYTES", 10)
         response = client.post(
             "/api/v1/upload/text",
@@ -664,9 +673,7 @@ class TestLearnedAdversarialIntegration:
         """At strength < 0.5, should use default config without learned adversarial."""
         from nightmarenet.api.app import _apply_nightmare_distortions
 
-        result = _apply_nightmare_distortions(
-            "Test text at low strength.", strength=0.3, seed=42
-        )
+        result = _apply_nightmare_distortions("Test text at low strength.", strength=0.3, seed=42)
         assert isinstance(result, str)
 
     def test_nightmare_custom_config_preserved(self):
@@ -737,8 +744,7 @@ class TestDemoEndpoint:
             "/api/v1/demo",
             json={
                 "text": (
-                    "A sufficiently long sentence to produce"
-                    " meaningful distortion differences."
+                    "A sufficiently long sentence to produce meaningful distortion differences."
                 ),
             },
         )
@@ -801,8 +807,4 @@ class TestDemoEndpoint:
         )
         data = response.json()
         insight_lower = data["insight"].lower()
-        assert any(
-            w in insight_lower
-            for w in ["resilient", "vulnerable"]
-        )
-
+        assert any(w in insight_lower for w in ["resilient", "vulnerable"])

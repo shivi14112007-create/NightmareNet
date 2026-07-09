@@ -58,7 +58,7 @@ def test_atomic_checkpoint_and_resume(tmp_path):
         model=model,
         optimizer=optimizer,
         config=config,
-        metrics={"loss": 0.5}
+        metrics={"loss": 0.5},
     )
 
     assert os.path.exists(target_dir)

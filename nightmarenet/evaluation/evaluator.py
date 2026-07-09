@@ -53,11 +53,9 @@ class Evaluator:
         """Log evaluation metrics to the experiment tracker."""
         if self.tracker is None:
             return
-        self.tracker.log_metrics({
-            f"eval/{k}": v
-            for k, v in metrics.items()
-            if isinstance(v, (int, float))
-        })
+        self.tracker.log_metrics(
+            {f"eval/{k}": v for k, v in metrics.items() if isinstance(v, (int, float))}
+        )
 
     def evaluate(
         self,
@@ -88,9 +86,7 @@ class Evaluator:
                     self.model, clean_dataloader, self.tokenizer, self.device
                 )
                 if self.tracker:
-                    self._log_eval(
-                        "recall", results["recall"]
-                    )
+                    self._log_eval("recall", results["recall"])
             except Exception as e:
                 logger.error("Failed to compute recall: %s", e)
                 results["recall"] = {"error": str(e)}
@@ -189,11 +185,9 @@ class Evaluator:
                 )
                 avg = results["glue"].get("average", {})
                 if self.tracker and isinstance(avg, dict):
-                    self.tracker.log_metrics({
-                        f"eval/glue_{k}": v
-                        for k, v in avg.items()
-                        if isinstance(v, (int, float))
-                    })
+                    self.tracker.log_metrics(
+                        {f"eval/glue_{k}": v for k, v in avg.items() if isinstance(v, (int, float))}
+                    )
             except Exception as e:
                 logger.error("Failed to compute GLUE: %s", e)
                 results["glue"] = {"error": str(e)}
@@ -265,6 +259,7 @@ class Evaluator:
         Returns:
             Markdown-formatted comparison report.
         """
+
         def _fmt(val, signed: bool = False) -> str:
             """Format a metric value: floats get .4f, others pass through."""
             if isinstance(val, float):
@@ -273,10 +268,9 @@ class Evaluator:
 
         def _metric_ok(metric_data: dict) -> bool:
             """Check a metric section has no errors in baseline or trained."""
-            return (
-                "error" not in metric_data.get("baseline", {})
-                and "error" not in metric_data.get("trained", {})
-            )
+            return "error" not in metric_data.get(
+                "baseline", {}
+            ) and "error" not in metric_data.get("trained", {})
 
         lines = [
             "# NightmareNet Evaluation Report",
@@ -292,68 +286,68 @@ class Evaluator:
         if convergence:
             final_delta = convergence.get("final_delta")
 
-            lines.extend([
-                "## Training Summary",
-                "",
-                "| Metric | Value |",
-                "|--------|-------|",
-                f"| Cycles completed | {convergence.get('cycles_completed', 'N/A')} |",
-                (
-                    f"| Final robustness delta | {final_delta:.6f} |"
-                    if final_delta is not None
-                    else "| Final robustness delta | N/A |"
-                ),
-                f"| Adaptive termination |"
-                f"{'Yes' if convergence.get('auto_terminated') else 'No'} |",
-            ])
+            lines.extend(
+                [
+                    "## Training Summary",
+                    "",
+                    "| Metric | Value |",
+                    "|--------|-------|",
+                    f"| Cycles completed | {convergence.get('cycles_completed', 'N/A')} |",
+                    (
+                        f"| Final robustness delta | {final_delta:.6f} |"
+                        if final_delta is not None
+                        else "| Final robustness delta | N/A |"
+                    ),
+                    f"| Adaptive termination |"
+                    f"{'Yes' if convergence.get('auto_terminated') else 'No'} |",
+                ]
+            )
         metrics = comparison.get("metrics", {})
 
         if "recall" in metrics and _metric_ok(metrics["recall"]):
             r = metrics["recall"]
-            lines.extend([
-                "### Recall",
-                "",
-                "| Metric | Baseline | Trained | Delta |",
-                "|--------|----------|---------|-------|",
-            ])
+            lines.extend(
+                [
+                    "### Recall",
+                    "",
+                    "| Metric | Baseline | Trained | Delta |",
+                    "|--------|----------|---------|-------|",
+                ]
+            )
             for key in ["token_accuracy", "perplexity"]:
                 bl = r.get("baseline", {}).get(key, "N/A")
                 tr = r.get("trained", {}).get(key, "N/A")
                 delta = r.get("deltas", {}).get(key, "N/A")
-                lines.append(
-                    f"| {key} | {_fmt(bl)} "
-                    f"| {_fmt(tr)} "
-                    f"| {_fmt(delta, signed=True)} |"
-                )
+                lines.append(f"| {key} | {_fmt(bl)} | {_fmt(tr)} | {_fmt(delta, signed=True)} |")
             lines.append("")
 
         if "generalization" in metrics and _metric_ok(metrics["generalization"]):
             r = metrics["generalization"]
-            lines.extend([
-                "### Generalization",
-                "",
-                "| Metric | Baseline | Trained | Delta |",
-                "|--------|----------|---------|-------|",
-            ])
+            lines.extend(
+                [
+                    "### Generalization",
+                    "",
+                    "| Metric | Baseline | Trained | Delta |",
+                    "|--------|----------|---------|-------|",
+                ]
+            )
             for key in ["generalization_score", "generalization_ratio"]:
                 bl = r.get("baseline", {}).get(key, "N/A")
                 tr = r.get("trained", {}).get(key, "N/A")
                 delta = r.get("deltas", {}).get(key, "N/A")
-                lines.append(
-                    f"| {key} | {_fmt(bl)} "
-                    f"| {_fmt(tr)} "
-                    f"| {_fmt(delta, signed=True)} |"
-                )
+                lines.append(f"| {key} | {_fmt(bl)} | {_fmt(tr)} | {_fmt(delta, signed=True)} |")
             lines.append("")
 
         if "robustness" in metrics and _metric_ok(metrics["robustness"]):
             r = metrics["robustness"]
-            lines.extend([
-                "### Robustness",
-                "",
-                "| Metric | Baseline | Trained | Delta |",
-                "|--------|----------|---------|-------|",
-            ])
+            lines.extend(
+                [
+                    "### Robustness",
+                    "",
+                    "| Metric | Baseline | Trained | Delta |",
+                    "|--------|----------|---------|-------|",
+                ]
+            )
             bl_auc = r.get("baseline", {}).get("auc_robustness", "N/A")
             tr_auc = r.get("trained", {}).get("auc_robustness", "N/A")
             delta_auc = r.get("deltas", {}).get("auc_robustness", "N/A")
@@ -366,21 +360,19 @@ class Evaluator:
 
         if "hallucination" in metrics and _metric_ok(metrics["hallucination"]):
             r = metrics["hallucination"]
-            lines.extend([
-                "### Hallucination",
-                "",
-                "| Metric | Baseline | Trained | Delta |",
-                "|--------|----------|---------|-------|",
-            ])
+            lines.extend(
+                [
+                    "### Hallucination",
+                    "",
+                    "| Metric | Baseline | Trained | Delta |",
+                    "|--------|----------|---------|-------|",
+                ]
+            )
             for key in ["hallucination_rate", "avg_hallucination_confidence"]:
                 bl = r.get("baseline", {}).get(key, "N/A")
                 tr = r.get("trained", {}).get(key, "N/A")
                 delta = r.get("deltas", {}).get(key, "N/A")
-                lines.append(
-                    f"| {key} | {_fmt(bl)} "
-                    f"| {_fmt(tr)} "
-                    f"| {_fmt(delta, signed=True)} |"
-                )
+                lines.append(f"| {key} | {_fmt(bl)} | {_fmt(tr)} | {_fmt(delta, signed=True)} |")
             lines.append("")
 
         return "\n".join(lines)

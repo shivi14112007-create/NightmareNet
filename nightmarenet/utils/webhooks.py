@@ -81,9 +81,7 @@ def _send_webhook_request(url: str, event_type: str, message: str, details: Dict
                     "title": f"NightmareNet: {event_type.upper()}",
                     "description": message,
                     "color": (
-                        16738304
-                        if event_type in ("alert", "regression_detected")
-                        else 3447003
+                        16738304 if event_type in ("alert", "regression_detected") else 3447003
                     ),
                     "fields": [
                         {"name": k, "value": str(v), "inline": True} for k, v in details.items()
@@ -98,9 +96,7 @@ def _send_webhook_request(url: str, event_type: str, message: str, details: Dict
             "@type": "MessageCard",
             "@context": "http://schema.org/extensions",
             "themeColor": (
-                "FF0000"
-                if event_type in ("alert", "regression_detected")
-                else "0078D7"
+                "FF0000" if event_type in ("alert", "regression_detected") else "0078D7"
             ),
             "summary": message,
             "title": f"NightmareNet: {event_type.upper()}",
@@ -144,7 +140,8 @@ def _send_webhook_request(url: str, event_type: str, message: str, details: Dict
                 if attempt < max_retries:
                     logger.warning(
                         "Webhook request to %s failed with status %d. Retrying in 2 seconds...",
-                        url, e.code
+                        url,
+                        e.code,
                     )
                     time.sleep(2)
                     continue

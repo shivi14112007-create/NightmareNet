@@ -3,7 +3,6 @@
 Disables API authentication during testing by unsetting NIGHTMARENET_API_KEY.
 """
 
-
 import pytest
 
 

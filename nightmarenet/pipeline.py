@@ -18,11 +18,12 @@ from nightmarenet.data.generator import create_generators_from_config
 from nightmarenet.data.ingest import DataIngestor
 from nightmarenet.distortions.text import apply_text_distortions
 from nightmarenet.evaluation.evaluator import Evaluator
+from nightmarenet.evaluation.metrics import evaluate_cycle, quick_robustness_score
 from nightmarenet.training.trainer import Trainer, _tokenize_dataset
 from nightmarenet.utils.config import load_config
 from nightmarenet.utils.telemetry import record_metric, setup_telemetry, trace_phase
 from nightmarenet.utils.webhooks import trigger_webhook
-from nightmarenet.evaluation.metrics import quick_robustness_score, evaluate_cycle
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,7 +59,9 @@ class PipelineMetrics:
     report_md: Optional[str] = None
     adaption_quality: Optional[dict] = None
     quality_feedback: Optional[dict] = None
-    per_cycle_metrics: list[dict] = field(default_factory=list)   # <-- add this, remove the duplicate `history` line
+    per_cycle_metrics: list[dict] = field(
+        default_factory=list
+    )  # <-- add this, remove the duplicate `history` line
 
     def to_dict(self) -> dict:
         return {
@@ -70,7 +73,7 @@ class PipelineMetrics:
             "progress_pct": round(self.progress_pct, 2),
             "eta_seconds": round(self.eta_seconds, 1),
             "history": self.history,
-            "per_cycle_metrics": self.per_cycle_metrics,   # <-- expose to dashboard
+            "per_cycle_metrics": self.per_cycle_metrics,  # <-- expose to dashboard
             "error": self.error,
             "has_report": self.report_md is not None,
         }
@@ -103,6 +106,7 @@ class Pipeline:
         resume_dir: Optional[str] = None,
     ) -> None:
         import uuid
+
         self.run_id = run_id or str(uuid.uuid4())
         self.config = config
         self.on_event = on_event
@@ -130,6 +134,7 @@ class Pipeline:
         self._convergence_count = 0
         self._final_convergence_delta: Optional[float] = None
         self._cycles_completed = 0
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
@@ -163,63 +168,63 @@ class Pipeline:
         )
 
     def _handle_cycle_end(self, event: dict) -> None:
-      """Handle per-cycle evaluation and adaptive convergence detection."""
-      if self._trainer is not None and self._train_dl is not None:
-       try:
-          metrics = evaluate_cycle(
-            model=self._trainer.model,
-            dataloader=self._train_dl,
-            tokenizer=self._trainer.tokenizer,
-            base_dataset=self._dataset,
-            distortion_fn=apply_text_distortions,
-            text_column=self.config.get("dataset", {}).get("text_column", "text"),
-            max_length=self.config.get("model", {}).get("max_length", 128),
-            batch_size=self.config.get("training", {}).get("batch_size", 8),
-            device=str(self._trainer.device),
-          )
-          metrics["cycle"] = event.get("cycle", 0)
-          self.metrics.per_cycle_metrics.append(metrics)
-          self._emit()
-       except Exception:
-          logger.exception("Per-cycle evaluation failed; continuing training.")
-
-      if self._trainer is None:
-        return
-      training_cfg = self.config.get("training", {})
-      auto_terminate = training_cfg.get("auto_terminate", False)
-      threshold = training_cfg.get("convergence_threshold", 0.005)
-      patience = training_cfg.get("convergence_patience", 2)
-      if auto_terminate:
-        score = quick_robustness_score(
-            model=self._trainer.model,
-            base_dataset=self._dataset,
-            tokenizer=self._trainer.tokenizer,
-            distortion_fn=apply_text_distortions,
-            strength=0.5,
-            text_column=self.config.get("dataset", {}).get("text_column", "text"),
-            max_length=self.config.get("model", {}).get("max_length", 128),
-            batch_size=training_cfg.get("batch_size", 8),
-            device=str(self._trainer.device),
-        )
-        if self._last_robustness_score is None:
-            self._last_robustness_score = score
-            self._cycles_completed = event.get("cycle", 0) + 1
-        else:
-            delta = abs(score - self._last_robustness_score)
-            self._final_convergence_delta = delta
-            if delta < threshold:
-                self._convergence_count += 1
-            else:
-                self._convergence_count = 0
-            self._last_robustness_score = score
-            self._cycles_completed = event.get("cycle", 0) + 1
-            if self._convergence_count >= patience and self._trainer is not None:
-                logger.info(
-                    "Robustness converged after %d cycles (delta=%.6f).",
-                    self._cycles_completed,
-                    delta,
+        """Handle per-cycle evaluation and adaptive convergence detection."""
+        if self._trainer is not None and self._train_dl is not None:
+            try:
+                metrics = evaluate_cycle(
+                    model=self._trainer.model,
+                    dataloader=self._train_dl,
+                    tokenizer=self._trainer.tokenizer,
+                    base_dataset=self._dataset,
+                    distortion_fn=apply_text_distortions,
+                    text_column=self.config.get("dataset", {}).get("text_column", "text"),
+                    max_length=self.config.get("model", {}).get("max_length", 128),
+                    batch_size=self.config.get("training", {}).get("batch_size", 8),
+                    device=str(self._trainer.device),
                 )
-                self._trainer.request_stop()
+                metrics["cycle"] = event.get("cycle", 0)
+                self.metrics.per_cycle_metrics.append(metrics)
+                self._emit()
+            except Exception:
+                logger.exception("Per-cycle evaluation failed; continuing training.")
+
+        if self._trainer is None:
+            return
+        training_cfg = self.config.get("training", {})
+        auto_terminate = training_cfg.get("auto_terminate", False)
+        threshold = training_cfg.get("convergence_threshold", 0.005)
+        patience = training_cfg.get("convergence_patience", 2)
+        if auto_terminate:
+            score = quick_robustness_score(
+                model=self._trainer.model,
+                base_dataset=self._dataset,
+                tokenizer=self._trainer.tokenizer,
+                distortion_fn=apply_text_distortions,
+                strength=0.5,
+                text_column=self.config.get("dataset", {}).get("text_column", "text"),
+                max_length=self.config.get("model", {}).get("max_length", 128),
+                batch_size=training_cfg.get("batch_size", 8),
+                device=str(self._trainer.device),
+            )
+            if self._last_robustness_score is None:
+                self._last_robustness_score = score
+                self._cycles_completed = event.get("cycle", 0) + 1
+            else:
+                delta = abs(score - self._last_robustness_score)
+                self._final_convergence_delta = delta
+                if delta < threshold:
+                    self._convergence_count += 1
+                else:
+                    self._convergence_count = 0
+                self._last_robustness_score = score
+                self._cycles_completed = event.get("cycle", 0) + 1
+                if self._convergence_count >= patience and self._trainer is not None:
+                    logger.info(
+                        "Robustness converged after %d cycles (delta=%.6f).",
+                        self._cycles_completed,
+                        delta,
+                    )
+                    self._trainer.request_stop()
 
     def cancel(self) -> None:
         """Request graceful cancellation of a running pipeline."""
@@ -263,7 +268,8 @@ class Pipeline:
 
         span_attrs = {
             "source": (
-                "urls" if urls
+                "urls"
+                if urls
                 else ("file" if file_path else ("text" if text_content else "huggingface"))
             ),
             "dataset.name": dataset_cfg.get("name", ""),
@@ -345,21 +351,21 @@ class Pipeline:
             # Estimate-first gating
             if adaption_cfg.get("estimate_first", False):
                 try:
-                    estimate = optimizer.estimate_cost(
-                        self._dataset, column_mapping
-                    )
+                    estimate = optimizer.estimate_cost(self._dataset, column_mapping)
                     if estimate:
                         max_credits = adaption_cfg.get("max_credits", 100)
                         if estimate["credits"] > max_credits:
                             logger.warning(
                                 "Adaption estimated %.1f credits (budget: %.1f). "
                                 "Skipping optimization.",
-                                estimate["credits"], max_credits,
+                                estimate["credits"],
+                                max_credits,
                             )
                             return
                         logger.info(
                             "Adaption estimate: %.1f credits, ~%.1f min",
-                            estimate["credits"], estimate["estimated_minutes"],
+                            estimate["credits"],
+                            estimate["estimated_minutes"],
                         )
                 except Exception:
                     logger.warning("Estimate check failed; proceeding anyway.", exc_info=True)
@@ -450,9 +456,7 @@ class Pipeline:
                     elif phase_name == "nightmare":
                         self._nightmare_base = optimized_dataset
 
-                    logger.info(
-                        "Phase '%s' optimization complete: %s", phase_name, quality
-                    )
+                    logger.info("Phase '%s' optimization complete: %s", phase_name, quality)
                 else:
                     logger.warning(
                         "Phase '%s' optimization returned None; using original.", phase_name
@@ -511,16 +515,25 @@ class Pipeline:
                 batch_size = self.config.get("training", {}).get("batch_size", 8)
 
                 self._train_dl = _tokenize_dataset(
-                    wake_data, self._trainer.tokenizer,
-                    text_column, max_length, batch_size,
+                    wake_data,
+                    self._trainer.tokenizer,
+                    text_column,
+                    max_length,
+                    batch_size,
                 )
                 self._dream_dl = _tokenize_dataset(
-                    dream_data, self._trainer.tokenizer,
-                    text_column, max_length, batch_size,
+                    dream_data,
+                    self._trainer.tokenizer,
+                    text_column,
+                    max_length,
+                    batch_size,
                 )
                 self._nightmare_dl = _tokenize_dataset(
-                    nightmare_data, self._trainer.tokenizer,
-                    text_column, max_length, batch_size,
+                    nightmare_data,
+                    self._trainer.tokenizer,
+                    text_column,
+                    max_length,
+                    batch_size,
                 )
                 logger.info("Preparation complete: dataloaders ready.")
                 self.metrics.progress_pct = 15.0
@@ -657,9 +670,7 @@ class Pipeline:
                     "final_delta": self._final_convergence_delta,
                     "auto_terminated": (
                         self._convergence_count
-                        >= self.config.get("training", {}).get(
-                                "convergence_patience", 2
-                            )
+                        >= self.config.get("training", {}).get("convergence_patience", 2)
                     ),
                 }
                 self.metrics.comparison = comparison
@@ -707,14 +718,10 @@ class Pipeline:
 
                 # Trigger webhook for regression_detected
                 if isinstance(robustness_delta, (int, float)) and robustness_delta < 0:
-                    baseline_auc = (
-                        robustness_metric.get("baseline", {})
-                        .get("auc_robustness", "N/A")
+                    baseline_auc = robustness_metric.get("baseline", {}).get(
+                        "auc_robustness", "N/A"
                     )
-                    trained_auc = (
-                        robustness_metric.get("trained", {})
-                        .get("auc_robustness", "N/A")
-                    )
+                    trained_auc = robustness_metric.get("trained", {}).get("auc_robustness", "N/A")
                     trigger_webhook(
                         self.config,
                         "regression_detected",
