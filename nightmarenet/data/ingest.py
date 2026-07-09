@@ -163,7 +163,9 @@ class DataIngestor:
             seed=self.seed,
             streaming=streaming,
         ).load()
-        return wrapper.train_data
+        if streaming:
+            return wrapper.train_data
+        return self._finalise(wrapper.train_data, f"huggingface({dataset_name})")
 
     # ------------------------------------------------------------------
     # Private helpers

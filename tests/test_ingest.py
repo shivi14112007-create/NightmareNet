@@ -262,5 +262,59 @@ class TestHuggingFaceIngestion:
             streaming=True,
         )
         mock_wrapper_instance.load.assert_called_once()
+        assert len(ds) == 15
+        assert "text" in ds.column_names
+
+    @patch("nightmarenet.data.ingest.DatasetWrapper")
+    def test_from_huggingface_below_threshold_raises(self, mock_wrapper_class, ingestor):
+        """from_huggingface should raise ValueError if dataset has < 10 samples."""
+        mock_wrapper_instance = mock_wrapper_class.return_value
+        from datasets import Dataset
+        mock_ds = Dataset.from_dict({"text": [f"HF sample {i} content" for i in range(5)]})
+        mock_wrapper_instance.train_data = mock_ds
+        mock_wrapper_instance.load.return_value = mock_wrapper_instance
+
+        with pytest.raises(ValueError, match="produced only 5 usable samples"):
+            ingestor.from_huggingface("glue", subset="sst2")
+
+    @patch("nightmarenet.data.ingest.DatasetWrapper")
+    def test_from_huggingface_filters_empty_texts(self, mock_wrapper_class, ingestor):
+        """from_huggingface should filter empty/whitespace-only texts."""
+        mock_wrapper_instance = mock_wrapper_class.return_value
+        from datasets import Dataset
+        mock_ds = Dataset.from_dict({
+            "text": [
+                "Valid sample 1",
+                "   ",
+                "",
+                "Valid sample 2",
+                "\t\n",
+                "Valid sample 3",
+                "Valid sample 4",
+                "Valid sample 5",
+                "Valid sample 6",
+                "Valid sample 7",
+                "Valid sample 8",
+                "Valid sample 9",
+                "Valid sample 10",
+            ]
+        })
+        mock_wrapper_instance.train_data = mock_ds
+        mock_wrapper_instance.load.return_value = mock_wrapper_instance
+
+        ds = ingestor.from_huggingface("glue", subset="sst2")
+        assert len(ds) == 10
+        assert all(text.strip() for text in ds["text"])
+
+    @patch("nightmarenet.data.ingest.DatasetWrapper")
+    def test_from_huggingface_streaming_bypasses_finalise(self, mock_wrapper_class, ingestor):
+        """streaming=True should bypass _finalise() and return wrapper.train_data directly."""
+        mock_wrapper_instance = mock_wrapper_class.return_value
+        from datasets import Dataset
+        mock_ds = Dataset.from_dict({"text": [f"HF sample {i}" for i in range(3)]})
+        mock_wrapper_instance.train_data = mock_ds
+        mock_wrapper_instance.load.return_value = mock_wrapper_instance
+
+        ds = ingestor.from_huggingface("glue", subset="sst2", streaming=True)
         assert ds == mock_ds
 

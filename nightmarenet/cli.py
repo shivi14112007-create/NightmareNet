@@ -260,8 +260,58 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return 0
 def cmd_distort(args: argparse.Namespace) -> int:
     """Apply a distortion to input text."""
+    from nightmarenet.distortions import dream, nightmare
+    from nightmarenet.distortions.dsl import ChainExecutor, list_presets, load_preset
+    from nightmarenet.distortions.dsl.parser import validate_chain_config
+
+    # Handle --list-presets
+    if getattr(args, "list_presets", False):
+        presets = list_presets()
+        if not presets:
+            print("No presets found.")
+            return 0
+        print(f"Available presets ({len(presets)}):")
+        for preset in presets:
+            print(f"  - {preset['name']}: {preset['description']}")
+            print(f"    Path: {preset['path']}")
+            print(f"    Version: {preset['version']}, Steps: {preset['num_steps']}")
+        return 0
+
+    # Handle --validate
+    if getattr(args, "validate", None):
+        is_valid, message = validate_chain_config(args.validate)
+        if is_valid:
+            print(f"✓ {message}")
+            return 0
+        else:
+            print(f"✗ {message}", file=sys.stderr)
+            return 1
+
+    # Handle --preset
+    if getattr(args, "preset", None):
+        preset_name = args.preset
+        text = args.text
+        strength = args.strength
+        seed = args.seed
+
+        try:
+            chain_config = load_preset(preset_name)
+            executor = ChainExecutor()
+            result = executor.execute(text, chain_config, overall_strength=strength, seed=seed)
+
+            print(f"Original:  {text}")
+            print(f"Distorted: {result}")
+            print(f"  Preset: {preset_name}, Strength: {strength}")
+            return 0
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"Error executing preset: {e}", file=sys.stderr)
+            return 1
     from nightmarenet.distortions.registry import get_registry
 
+    # Handle single engine distortion (original behavior)
     text = args.text
     strength = args.strength
 
@@ -518,17 +568,26 @@ def build_parser() -> argparse.ArgumentParser:
     distort_parser.add_argument(
         "--type",
         choices=["dream", "nightmare"],
-        help="Legacy distortion type (use --engine instead)",
+        help="Single engine type (mutually exclusive with --preset)",
     )
+    distort_parser.add_argument(
+        "--strength", type=float, default=0.3, help="Distortion strength (0-1)"
+    )
+    distort_parser.add_argument("--text", required=True, help="Input text to distort")
+    distort_parser.add_argument(
+        "--seed", type=int, default=None, help="Random seed for reproducibility"
+    )
+    distort_parser.add_argument("--preset", help="Name of preset chain to apply")
+    distort_parser.add_argument(
+        "--list-presets", action="store_true", help="List available preset chains"
+    )
+    distort_parser.add_argument("--validate", help="Validate a preset YAML file")
     distort_parser.add_argument(
         "--engine", help="Distortion engine name (use --list-engines to see available)"
     )
     distort_parser.add_argument(
         "--list-engines", action="store_true", help="List all available distortion engines"
     )
-    distort_parser.add_argument("--strength", type=float, default=0.3)
-    distort_parser.add_argument("--text", required=True)
-    distort_parser.add_argument("--seed", type=int, default=None)
 
     # foundation
     foundation_parser = subparsers.add_parser("foundation", help="Manage foundation models")
