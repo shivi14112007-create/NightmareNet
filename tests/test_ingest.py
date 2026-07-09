@@ -306,3 +306,15 @@ class TestHuggingFaceIngestion:
         assert len(ds) == 10
         assert all(text.strip() for text in ds["text"])
 
+    @patch("nightmarenet.data.ingest.DatasetWrapper")
+    def test_from_huggingface_streaming_bypasses_finalise(self, mock_wrapper_class, ingestor):
+        """streaming=True should bypass _finalise() and return wrapper.train_data directly."""
+        mock_wrapper_instance = mock_wrapper_class.return_value
+        from datasets import Dataset
+        mock_ds = Dataset.from_dict({"text": [f"HF sample {i}" for i in range(3)]})
+        mock_wrapper_instance.train_data = mock_ds
+        mock_wrapper_instance.load.return_value = mock_wrapper_instance
+
+        ds = ingestor.from_huggingface("glue", subset="sst2", streaming=True)
+        assert ds == mock_ds
+
