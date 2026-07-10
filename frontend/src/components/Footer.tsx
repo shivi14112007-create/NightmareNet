@@ -74,7 +74,7 @@ export default function Footer() {
 
         <div className="mt-8 pt-6 border-t border-black/[0.03] dark:border-white/[0.03] text-center">
           <p className="text-[10px] text-muted/40 font-mono">
-            NightmareNet v0.2.0 • MIT License • Sleep-Inspired Training Paradigm
+            NightmareNet v0.2.0 • Apache License 2.0 • Sleep-Inspired Training Paradigm
           </p>
         </div>
       </div>
