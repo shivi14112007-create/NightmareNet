@@ -65,6 +65,14 @@ def _create_amp_scaler(use_amp: bool, device: torch.device) -> Optional[torch.am
     return None
 
 
+def _worker_init_fn(worker_id: int) -> None:
+    """Ensure numpy and Python random are seeded correctly inside DataLoader workers."""
+    import random
+    import numpy as np
+    np.random.seed(torch.initial_seed() % 2**32 + worker_id)
+    random.seed(torch.initial_seed() % 2**32 + worker_id)
+
+
 def _tokenize_dataset(
     dataset: Any,
     tokenizer: Any,
@@ -90,7 +98,11 @@ def _tokenize_dataset(
             remove_columns=dataset.column_names if dataset.column_names else [text_column],
         )
         tokenized = tokenized.with_format("torch")
-        return DataLoader(tokenized, batch_size=batch_size)
+        return DataLoader(
+            tokenized, 
+            batch_size=batch_size, 
+            worker_init_fn=_worker_init_fn
+        )
 
     tokenized = dataset.map(
         tokenize_fn,
@@ -99,7 +111,12 @@ def _tokenize_dataset(
         desc="Tokenizing",
     )
     tokenized.set_format("torch")
-    return DataLoader(tokenized, batch_size=batch_size, shuffle=True)
+    return DataLoader(
+        tokenized, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        worker_init_fn=_worker_init_fn
+    )
 
 
 def _set_reproducibility(seed: int) -> None:
@@ -382,8 +399,8 @@ class Trainer:
             List of phase result dicts (training history).
         """
 
-        ## Set the reproducibility seed before training starts (Fixes Issue #64)
-        seed = self.training_config.get("seed", 42)
+        # Set the reproducibility seed before training starts (Fixes Issue #64)
+        seed = self.config.get("seed", 42)
         _set_reproducibility(seed)
 
         logger.info("Starting training with schedule:\n%s", self.scheduler.summary())  # type: ignore[union-attr]
