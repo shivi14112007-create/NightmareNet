@@ -399,6 +399,7 @@ If you use NightmareNet in academic work, please cite:
 - **Sponsors** — GitHub Sponsors and OpenCollective links go here once the project moves out of pre-release
 
 > [!IMPORTANT]
+>Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 > Research-first contributions are especially welcome. If you have measured results extending the 4-phase cycle to a new domain (vision, multimodal, code generation), open a Discussion thread. We aim to credit external research in the paper's acknowledgements.
 
 ---

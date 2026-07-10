@@ -11,7 +11,7 @@ Thank you for helping improve NightmareNet. This project uses a **research-first
 1. **Star this repository** — It helps us gauge community interest and prioritize features.
 2. **Follow [@Adit-Jain-srm](https://github.com/Adit-Jain-srm)** — Stay updated on releases, related projects, and research.
 3. **Read this entire guide** — PRs that don't follow the coding standards or skip tests will be asked to revise.
-
+4.  **Please read our [Code of Conduct](CODE_OF_CONDUCT.md)** before contributing to help maintain a welcoming and respectful community.
 > Maintainers verify star/follow status before merging. PRs from accounts that haven't completed steps 1-2 will be asked to do so before review begins.
 
 ---
