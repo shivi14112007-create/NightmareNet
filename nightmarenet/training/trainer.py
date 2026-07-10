@@ -27,6 +27,11 @@ from transformers import (
 )
 
 from nightmarenet.distributed.checkpoint import AtomicCheckpointer
+from nightmarenet.training.callbacks import (
+    CallbackManager,
+    EventType,
+    TrainingEvent,
+)
 from nightmarenet.distributed.ddp_wrapper import DDPWrapper
 from nightmarenet.distributed.device_pool import DevicePool
 from nightmarenet.distributed.resume import ResumeManager
@@ -118,6 +123,7 @@ class Trainer:
         tokenizer=None,
         distributed: Optional[str] = None,
         resume_dir: Optional[str] = None,
+        callback_manager: Optional[CallbackManager] = None,
     ):
         self.config = config
         self.device = _get_device(config)
@@ -247,6 +253,7 @@ class Trainer:
 
         self.run_id = None
         self._vram_alert_sent = False
+        self.callback_manager = callback_manager or CallbackManager()
 
     def _create_reference_model(self) -> None:
         """Create a frozen copy of the current model for KL regularization."""
@@ -516,6 +523,7 @@ class Trainer:
                                 "status": "phase_start",
                             }
                         )
+                    
                     except Exception:
                         logger.debug("on_progress callback failed", exc_info=True)
                 logger.info(
@@ -523,6 +531,16 @@ class Trainer:
                     cycle + 1,
                     phase,
                     num_epochs,
+                )
+
+                self.callback_manager.emit(
+                    TrainingEvent(
+                        event_type=EventType.PHASE_START,
+                        phase=phase,
+                        metadata={
+                            "cycle": cycle,
+                        },
+                    )
                 )
 
                 result: dict
@@ -619,6 +637,20 @@ class Trainer:
                     except Exception:
                         logger.debug("on_progress callback failed", exc_info=True)
 
+                
+                self.callback_manager.emit(
+                    TrainingEvent(
+                        event_type=EventType.PHASE_END,
+                        phase=phase,
+                        metrics={
+                            "avg_loss": result.get("avg_loss", 0.0),
+                        },
+                        metadata={
+                            "cycle": cycle,
+                        },
+                    )
+                )
+
                 # Log to tracker
                 self.tracker.log_phase(cycle, phase, result)
 
@@ -629,6 +661,16 @@ class Trainer:
 
                 # Save checkpoint
                 self._save_checkpoint(cycle, phase)
+
+                self.callback_manager.emit(
+                    TrainingEvent(
+                        event_type=EventType.CHECKPOINT,
+                        phase=phase,
+                        metadata={
+                            "cycle": cycle,
+                        },
+                    )
+                )
 
                 # Check GPU VRAM pressure
                 if self.device.type == "cuda":
