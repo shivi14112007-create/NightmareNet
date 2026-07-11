@@ -8,7 +8,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Deep Learning](https://img.shields.io/badge/Deep_Learning-GAN-FF6F00?logo=tensorflow)](https://en.wikipedia.org/wiki/Generative_adversarial_network)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/Adit-Jain-srm/NightmareNet)](https://github.com/Adit-Jain-srm/NightmareNet)
 
 *A generative adversarial network exploring the boundaries of AI-generated imagery.*
@@ -29,7 +29,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen)](.github/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-556%2B%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-558%2B%20passing-brightgreen)](#testing)
 [![Python](https://img.shields.io/badge/python-3.9%E2%80%933.12-blue)](#installation)
 
 *Wake. Dream. Nightmare. Compress. Repeat.*
@@ -399,6 +399,7 @@ If you use NightmareNet in academic work, please cite:
 - **Sponsors** — GitHub Sponsors and OpenCollective links go here once the project moves out of pre-release
 
 > [!IMPORTANT]
+>Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 > Research-first contributions are especially welcome. If you have measured results extending the 4-phase cycle to a new domain (vision, multimodal, code generation), open a Discussion thread. We aim to credit external research in the paper's acknowledgements.
 
 ---
@@ -406,7 +407,8 @@ If you use NightmareNet in academic work, please cite:
 ## Testing
 
 ```bash
-pytest --cov=nightmarenet --cov-report=term-missing tests/ -v --tb=short   # 556+ tests
+pytest --cov=nightmarenet --cov-report=term-missing tests/ -v --tb=short   # 558+ tests
+pytest -m slow tests/test_distortion_fuzz.py -v                            # 1000+ sample fuzz suite
 ruff check .                         # zero lint errors
 mypy nightmarenet/                   # type check
 cd frontend && npm run build         # production build

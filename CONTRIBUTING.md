@@ -11,7 +11,7 @@ Thank you for helping improve NightmareNet. This project uses a **research-first
 1. **Star this repository** — It helps us gauge community interest and prioritize features.
 2. **Follow [@Adit-Jain-srm](https://github.com/Adit-Jain-srm)** — Stay updated on releases, related projects, and research.
 3. **Read this entire guide** — PRs that don't follow the coding standards or skip tests will be asked to revise.
-
+4.  **Please read our [Code of Conduct](CODE_OF_CONDUCT.md)** before contributing to help maintain a welcoming and respectful community.
 > Maintainers verify star/follow status before merging. PRs from accounts that haven't completed steps 1-2 will be asked to do so before review begins.
 
 ---
@@ -129,7 +129,10 @@ If two people request the same issue simultaneously (within 1 hour):
 - Small PRs merge faster than large ones - if an issue is big, ask if it can be split into sub-issues
 - If you're stuck, comment on the issue asking for help - don't go silent for a week
 - **We merge quickly.** Focus on completing your current assigned issue before requesting new ones. Deliver first, then pick up more.
-- **Think you can do it better?** If an issue is assigned but has no PR or progress after a few days, feel free to comment with your approach. Quality implementations are always welcome - we'd rather merge the best solution regardless of who was "first."
+
+> [!TIP]
+> **Think you can do it better?** Don't be discouraged by an existing assignment. If you believe you can deliver a better or faster implementation, comment with your detailed approach - even if someone else already requested the issue. We evaluate approaches on merit, not arrival order. Include: which files you'll change, what enhancements you'd add beyond the stated requirements, and your timeline. If your plan is demonstrably stronger (more complete, better tested, or addresses edge cases the current assignee missed), we'll reassign. The goal is the best possible contribution, not a queue.
+
 - All assignment decisions are at the maintainer's discretion based on these guidelines. The goal is shipping great code, not bureaucracy.
 
 ---
@@ -436,6 +439,8 @@ These are applied by maintainers at merge time based on quality. **Do not reques
 
 8. **Disclose AI usage.** If you used AI tools (Copilot, ChatGPT, Claude, Cursor), state it in the PR description. We welcome AI-assisted contributions. We reject blindly pasted output.
 
+9. **Compete on quality, not timing.** See an assigned issue where you have a better approach? Comment with your detailed plan - which files, what enhancements, your timeline. We reassign based on the strongest approach, not who commented first. Don't let an existing assignment stop you from proposing a superior implementation.
+
 ### How to Maximize Your Score
 
 - Pick issues matching your skill level (start with L1 if new to the codebase)
@@ -444,6 +449,20 @@ These are applied by maintainers at merge time based on quality. **Do not reques
 - Write PR descriptions that explain WHY, not just WHAT
 - Respond to review comments within 24 hours
 - Follow up merged PRs with related improvements (builds trust, gets `good-backend`)
+
+### Pro Tips (what separates great contributors from average ones)
+
+1. **Resolve CodeRabbitAI suggestions.** Our repo uses automated code review. When CodeRabbit leaves suggestions on your PR, address each one (fix it or explain why you disagree). Unresolved bot comments signal laziness to reviewers.
+
+2. **Re-request review after addressing feedback.** After making changes requested by the code owner, click "Re-request review" on GitHub. Don't just push commits silently and wait - signal that you're ready for the next round.
+
+3. **Complete ALL checklists before requesting review.** The PR template has Acceptance Criteria, Pre-submission Checklist, and Quality Checklist. Every box must be checked (or have an explicit explanation for why not). Reviewers will reject PRs with unchecked boxes without reading the code.
+
+4. **Ask questions when things are ambiguous.** If the issue description is unclear, a design choice has multiple valid approaches, or you're unsure about scope - comment on the issue and ask. This shows ownership and critical thinking. Contributors who ask smart questions earn bonus labels faster than those who guess wrong and waste review cycles.
+
+5. **Reference specific code in your approach.** When requesting assignment or discussing implementation, cite file paths and line numbers. "I'll modify `nightmarenet/training/phases.py:429-528` to add the distillation loss" is 10x better than "I'll implement the feature."
+
+6. **Maintain a local learnings file.** If you plan to work on multiple issues, create a `LEARNINGS.md` in your local setup (gitignored) to track patterns, gotchas, and conventions you discover. This accelerates your second and third PRs dramatically - you won't repeat mistakes or re-read the same code twice.
 
 ---
 

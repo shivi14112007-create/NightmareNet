@@ -2,6 +2,7 @@ import json
 import os
 import sys
 
+
 def main():
     pr_file = os.environ.get("PR_RESULTS")
     main_file = os.environ.get("MAIN_RESULTS")
@@ -38,9 +39,9 @@ def main():
         sys.exit(0)
 
     try:
-        with open(pr_file, "r") as f:
+        with open(pr_file) as f:
             pr_data = json.load(f)
-        with open(main_file, "r") as f:
+        with open(main_file) as f:
             main_data = json.load(f)
     except Exception as e:
         sys.stderr.write(f"::error::Failed to load result files: {e}\n")
@@ -56,11 +57,11 @@ def main():
 
         if pr_val is None or main_val is None:
             continue
-            
+
         pr_val = float(pr_val)
         main_val = float(main_val)
         delta = pr_val - main_val
-        
+
         if delta < 0:
             has_regression = True
             if delta < threshold:
@@ -75,7 +76,10 @@ def main():
         })
 
     with open("delta_results.json", "w") as f:
-        json.dump({"threshold": threshold, "results": results, "exceeds_threshold": exceeds_threshold}, f)
+        json.dump(
+            {"threshold": threshold, "results": results, "exceeds_threshold": exceeds_threshold},
+            f,
+        )
 
     # Export variables for subsequent steps
     with open(os.environ["GITHUB_ENV"], "a") as f:

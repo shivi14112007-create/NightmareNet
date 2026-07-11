@@ -24,9 +24,15 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://frontend-aj5.vercel.app"
+  ),
+
   title: "NightmareNet — Autonomous AI Self-Improvement Platform",
+
   description:
     "Force neural networks to learn invariant structures through Dream & Nightmare cycles. Autonomous training, adversarial stress-testing, and knowledge compression.",
+
   keywords: [
     "AI",
     "machine learning",
@@ -37,13 +43,24 @@ export const metadata: Metadata = {
     "nightmare",
     "robustness",
   ],
+
   authors: [{ name: "Adit Jain" }],
-  icons: { icon: "/favicon.ico" },
+
   openGraph: {
     title: "NightmareNet — Autonomous AI Self-Improvement",
     description:
       "Dream & Nightmare cycles that force models to learn what matters.",
+    url: "/",
+    siteName: "NightmareNet",
+    locale: "en_US",
     type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "NightmareNet — Autonomous AI Self-Improvement",
+    description:
+      "Dream & Nightmare cycles that force models to learn what matters.",
   },
 };
 

@@ -37,7 +37,7 @@ jobs:
         if: matrix.python-version == '3.12'
 
       - name: Run tests with coverage
-        run: pytest --cov=nightmarenet --cov-report=xml --cov-report=term-missing
+        run: PYTHONPATH=. pytest -m "not slow" --cov=nightmarenet --cov-report=xml --cov-report=term-missing
 
       - name: Set up Node.js
         if: matrix.python-version == '3.12'

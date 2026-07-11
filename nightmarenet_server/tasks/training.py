@@ -8,7 +8,7 @@ The task streams pipeline events to two sinks:
    subscribed WebSocket client for live UI updates.
 
 When Celery is not installed, ``run_pipeline_task`` degrades to a plain
-synchronous function so the rest of the platform (and the existing 297-test
+synchronous function so the rest of the platform (and the existing 522+-test
 suite) continues to work unmodified.
 """
 

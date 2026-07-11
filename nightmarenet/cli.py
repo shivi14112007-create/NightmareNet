@@ -161,8 +161,11 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
         print(f"  Output: {args.output if args.output else './results'}")
         print()
 
+        output_dir = args.output if args.output else "./results"
+        no_cache = getattr(args, "no_cache", False)
+
         orchestrator = EnsembleOrchestrator(args.config)
-        results = orchestrator.run(timeout_seconds=300)
+        results = orchestrator.run(timeout_seconds=300, output_dir=output_dir, no_cache=no_cache)
 
         # Analyze pareto frontier
         pareto_front = get_pareto_frontier(results["models_summary"])
@@ -172,7 +175,6 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
         curves = calculate_degradation_curves(results["raw_results"])
         results["degradation_curves"] = curves
 
-        output_dir = args.output if args.output else "./results"
         # We want json, csv, latex
         # format_all reads 'models_summary' from results dict for table generation
         format_all(results, formats=["json", "csv", "latex"], output_dir=output_dir)
@@ -562,6 +564,9 @@ def build_parser() -> argparse.ArgumentParser:
     bench_parser.add_argument("--model", default="distilbert-base-uncased")
     bench_parser.add_argument("--config", help="YAML config path for ensemble benchmarking")
     bench_parser.add_argument("--output", help="Output directory for ensemble benchmark results")
+    bench_parser.add_argument(
+        "--no-cache", action="store_true", help="Force re-evaluation without using cache"
+    )
 
     # distort
     distort_parser = subparsers.add_parser("distort", help="Apply distortion to text")

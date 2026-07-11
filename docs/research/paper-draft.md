@@ -70,7 +70,7 @@ This paper investigates whether the same structural intuition transfers to
    self-improvement across cycles.
 4. **Empirical validation on consumer hardware** — a 500-sample SST-2
    benchmark on an RTX 3050 Ti Laptop GPU (4 GB VRAM) demonstrating the
-   +14.49% relative robustness improvement (§4).
+   +13.64% relative robustness improvement (§4).
 5. **Open-source implementation** with modular phase / distortion plugins,
    permitting community extension to new modalities, attack methods, and base
    architectures.
@@ -263,6 +263,13 @@ All distortions are seeded (`seed = 42`) for deterministic reproduction.
 
 ### 4.4 Reproducibility
 
+All distortion operations are deterministic given `(text, strength, seed)`. This
+property is systematically verified by property-based tests in
+`tests/test_distortion_fuzz.py` using [Hypothesis](https://hypothesis.readthedocs.io/),
+which generates 1000+ random `(text, strength, seed)` triples per engine — including
+Unicode text, empty inputs, and strength boundaries — and asserts identical outputs
+across two independent calls with the same inputs.
+
 ```bash
 py -3.12 -m venv .venv312
 .venv312/Scripts/Activate.ps1
@@ -346,7 +353,7 @@ Our results demonstrate transfer ratios consistently > 0.6 (and exceeding 0.7 on
 
 ### 6.1 Why does the wake + nightmare half-cycle help so much?
 
-We interpret the +14.49% gain as evidence that *exposing the model to
+We interpret the +13.64% gain as evidence that *exposing the model to
 nightmare-distorted text during training collapses the gap between in-
 distribution clean inputs and the rule-based perturbations used at evaluation*.
 This is consistent with the standard adversarial-training mechanism
@@ -374,7 +381,7 @@ This is an early-stage validation; we explicitly note:
    `TextAttack` library is straightforward and is the v2 priority.
 4. **Single cycle (and only half of it).** The full Wake → Dream → Nightmare →
    Compress cycle with `num_cycles ≥ 3` (the sleep-inspired core thesis) is
-   implemented in `Pipeline.run()` and validated by 297 unit tests, but is not
+   implemented in `Pipeline.run()` and validated by 522+ unit tests, but is not
    yet benchmark-measured.
 5. **Single dataset / model.** SST-2 / DistilBERT only. Generalization to
    AG News, IMDB, BERT-base, GPT-2-class models is on the v2 roadmap.
@@ -386,7 +393,7 @@ This is an early-stage validation; we explicitly note:
 
 ### 6.3 Broader impact
 
-*Positive:* The +14.49% headline result on a consumer GPU suggests that
+*Positive:* The +13.64% headline result on a consumer GPU suggests that
 practical adversarial-robustness gains do not require industrial compute,
 lowering the barrier for safety-critical NLP deployments and EU AI Act
 Article 15 compliance. The open-source release (Apache 2.0) is intended to
@@ -423,8 +430,13 @@ NightmareNet demonstrates that decomposing adversarial-robustness acquisition
 into biologically-inspired phases — each addressing a complementary failure
 mode — outperforms monolithic adversarial training on equivalent compute.
 On the SST-2 / DistilBERT setup, a single Wake → Nightmare half-cycle
-delivers a **+14.49% relative improvement in adversarial accuracy** with no
+delivers a **+13.64% relative improvement in adversarial accuracy**[^conclusion] with no
 loss of clean accuracy, on a 4 GB consumer GPU, in under 8 s of training.
+
+[^conclusion]: An earlier partial run (nightmare distortions only, `learned: 0.0`) yielded
++14.49% as recorded in `results/gpu_benchmark.json`. The canonical number is
++13.64%, computed across both dream and nightmare distortion families at
+strengths 0.1–0.9 as reported in §5.
 
 The results support the broader hypothesis that *the structure of training*
 (when and how different signals are presented) matters as much as the
