@@ -23,8 +23,16 @@ SENTENCES = [
     ("neg", "A tedious, overlong mess that never finds its footing."),
     ("pos", "Charming."),
     ("neg", "Boring."),
-    ("pos", "An unexpectedly moving story about family, loss, and forgiveness that lingers long after the credits roll."),
-    ("neg", "The plot makes no sense and the acting is wooden throughout, making for a genuinely unpleasant viewing experience."),
+    (
+        "pos",
+        "An unexpectedly moving story about family, loss, and forgiveness "
+        "that lingers long after the credits roll.",
+    ),
+    (
+        "neg",
+        "The plot makes no sense and the acting is wooden throughout, "
+        "making for a genuinely unpleasant viewing experience.",
+    ),
     ("mixed", "It has flashes of brilliance but ultimately collapses under its own ambition."),
     ("mixed", "Not a great film, but not a bad one either -- just forgettable."),
 ]
@@ -36,7 +44,7 @@ def highlight_diff(original: str, distorted: str) -> str:
     dist_tokens = distorted.split()
     sm = difflib.SequenceMatcher(None, orig_tokens, dist_tokens)
     out = []
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+    for tag, _i1, _i2, j1, j2 in sm.get_opcodes():
         if tag == "equal":
             out.extend(dist_tokens[j1:j2])
         else:
