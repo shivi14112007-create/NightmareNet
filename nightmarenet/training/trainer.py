@@ -68,9 +68,11 @@ def _create_amp_scaler(use_amp: bool, device: torch.device) -> Optional[torch.am
 def _worker_init_fn(worker_id: int) -> None:
     """Ensure numpy and Python random are seeded correctly inside DataLoader workers."""
     import random
+
     import numpy as np
-    np.random.seed(torch.initial_seed() % 2**32 + worker_id)
-    random.seed(torch.initial_seed() % 2**32 + worker_id)
+    worker_seed = (torch.initial_seed() + worker_id) % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 
 def _tokenize_dataset(
@@ -99,8 +101,8 @@ def _tokenize_dataset(
         )
         tokenized = tokenized.with_format("torch")
         return DataLoader(
-            tokenized, 
-            batch_size=batch_size, 
+            tokenized,
+            batch_size=batch_size,
             worker_init_fn=_worker_init_fn
         )
 
@@ -112,9 +114,9 @@ def _tokenize_dataset(
     )
     tokenized.set_format("torch")
     return DataLoader(
-        tokenized, 
-        batch_size=batch_size, 
-        shuffle=True, 
+        tokenized,
+        batch_size=batch_size,
+        shuffle=True,
         worker_init_fn=_worker_init_fn
     )
 

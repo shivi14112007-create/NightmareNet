@@ -250,9 +250,10 @@ class TestFullCycleIntegration:
         )
 
         # Ensure history captures identical loss structures across runs
+        assert len(history_1) > 0, "history_1 should not be empty"
+        assert "avg_loss" in history_1[0], "history must contain avg_loss"
         assert len(history_1) == len(history_2)
-        if history_1 and "avg_loss" in history_1[0]:
-            assert history_1[0]["avg_loss"] == history_2[0]["avg_loss"]
+        assert history_1[0]["avg_loss"] == history_2[0]["avg_loss"]
 
 
 # ---------------------------------------------------------------------------
