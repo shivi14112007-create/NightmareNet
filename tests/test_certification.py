@@ -21,7 +21,6 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-
 from nightmarenet.evaluation.certification import (
     CertificationResult,
     _run_noisy_forward_passes,
